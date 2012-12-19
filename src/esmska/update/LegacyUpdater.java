@@ -1,30 +1,35 @@
 package esmska.update;
 
-import com.csvreader.CsvReader;
-import esmska.data.Config;
-import esmska.data.CountryPrefix;
-import esmska.data.Keyring;
-import esmska.data.Signature;
-import esmska.data.Signatures;
-import esmska.data.Tuple;
-import esmska.persistence.ContinuousSaveManager;
-import esmska.persistence.PersistenceManager;
 import java.io.File;
 import java.lang.reflect.Field;
 import java.nio.charset.Charset;
 import java.util.Locale;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathFactory;
+
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang.ObjectUtils;
 import org.apache.commons.lang.StringUtils;
 import org.w3c.dom.Document;
+
+import com.csvreader.CsvReader;
+
+import esmska.data.Config;
+import esmska.data.CountryPrefix;
+import esmska.data.EncryptedString;
+import esmska.data.Keyring;
+import esmska.data.Signature;
+import esmska.data.Signatures;
+import esmska.data.Tuple;
+import esmska.persistence.ContinuousSaveManager;
+import esmska.persistence.PersistenceManager;
 
 /** Class for updating from older to newer versions of the program.
  * Makes the needed changes when user updates his version.
@@ -83,13 +88,13 @@ public class LegacyUpdater {
                 while (reader.readRecord()) {
                     String gatewayName = reader.get(0);
                     String login = reader.get(1);
-                    String password = reader.get(2);
+                    String passwordString = reader.get(2);
 
-                    byte[] ciphertext = Base64.decodeBase64(password.getBytes("UTF-8"));
+                    byte[] ciphertext = Base64.decodeBase64(passwordString.getBytes("UTF-8"));
                     byte[] cleartext = cipher.doFinal(ciphertext);
-                    password = new String(cleartext, "UTF-8");
+                    EncryptedString password = EncryptedString.createFromPlainText(new String(cleartext, "UTF-8"));
 
-                    Tuple<String, String> key = new Tuple<String, String>(login, password);
+                    Tuple<String, EncryptedString> key = new Tuple<String, EncryptedString>(login, password);
                     keyring.putKey(gatewayName, key);
                 }
                 reader.close();

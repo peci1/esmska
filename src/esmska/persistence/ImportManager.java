@@ -1,51 +1,62 @@
 package esmska.persistence;
 
-import com.csvreader.CsvReader;
-import esmska.data.*;
-import esmska.data.Config.GlobalConfig;
-import java.io.File;
-import java.io.IOException;
-import java.nio.charset.Charset;
-import java.util.ArrayList;
-import esmska.data.Contact;
-import esmska.data.SMS;
-import esmska.data.Gateway;
-import esmska.data.Tuple;
-import esmska.update.VersionFile;
 import java.beans.IntrospectionException;
+import java.io.File;
 import java.io.FileFilter;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.net.JarURLConnection;
 import java.net.URL;
+import java.nio.charset.Charset;
 import java.text.DateFormat;
-import java.util.Collection;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.jar.JarEntry;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
+
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
+
 import org.apache.commons.io.FileUtils;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
+
+import com.csvreader.CsvReader;
+
+import esmska.data.Config;
+import esmska.data.Config.GlobalConfig;
+import esmska.data.Contact;
+import esmska.data.DeprecatedGateway;
+import esmska.data.EncryptedString;
+import esmska.data.Gateway;
+import esmska.data.GatewayConfig;
+import esmska.data.Gateways;
+import esmska.data.History;
+import esmska.data.Keyring;
+import esmska.data.SMS;
+import esmska.data.Signature;
+import esmska.data.Signatures;
+import esmska.data.Tuple;
+import esmska.update.VersionFile;
 
 /** Import program data
  *
@@ -346,9 +357,9 @@ public class ImportManager {
                 try {
                     String gatewayName = reader.get(0);
                     String login = reader.get(1);
-                    String password = Keyring.decrypt(reader.get(2));
+                    EncryptedString password = new EncryptedString(reader.get(2));
 
-                    Tuple<String, String> key = new Tuple<String, String>(login, password);
+                    Tuple<String, EncryptedString> key = new Tuple<String, EncryptedString>(login, password);
                     keyring.putKey(gatewayName, key);
                 } catch (Exception e) {
                     logger.severe("Invalid keyring record: " + reader.getRawRecord());

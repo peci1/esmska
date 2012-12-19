@@ -1,12 +1,5 @@
 package esmska.transfer;
 
-import esmska.data.Keyring;
-import esmska.data.Gateway;
-import esmska.data.Gateways;
-import esmska.data.SMS;
-import esmska.data.Tuple;
-import esmska.transfer.GatewayExecutor.Problem;
-import esmska.utils.L10N;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.util.Arrays;
@@ -17,10 +10,20 @@ import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import javax.script.Invocable;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
+
+import esmska.data.EncryptedString;
+import esmska.data.Gateway;
+import esmska.data.Gateways;
+import esmska.data.Keyring;
+import esmska.data.SMS;
+import esmska.data.Tuple;
+import esmska.transfer.GatewayExecutor.Problem;
+import esmska.utils.L10N;
 
 /** Class that takes care of parsing gateway script files for extracting
  * gateway info and sending messages.
@@ -113,10 +116,10 @@ public class GatewayInterpreter {
         map.put(GatewayVariable.SENDERNAME, sms.getSenderName());
         map.put(GatewayVariable.SENDERNUMBER, sms.getSenderNumber());
         
-        Tuple<String, String> key = keyring.getKey(sms.getGateway());
+        Tuple<String, EncryptedString> key = keyring.getKey(sms.getGateway());
         if (key != null) {
             map.put(GatewayVariable.LOGIN, key.get1());
-            map.put(GatewayVariable.PASSWORD, key.get2());
+            map.put(GatewayVariable.PASSWORD, key.get2().getPlainText());
         }
 
         if (gateway.getConfig().isReceipt()) {

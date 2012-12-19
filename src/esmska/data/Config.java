@@ -1,16 +1,21 @@
 package esmska.data;
 
-import esmska.gui.ThemeManager;
-import esmska.utils.AlphanumComparator;
 import java.awt.Dimension;
-import java.beans.*;
+import java.beans.Beans;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import java.beans.PropertyChangeSupport;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import org.apache.commons.lang.ObjectUtils;
 import org.apache.commons.lang.StringUtils;
+
+import esmska.gui.ThemeManager;
+import esmska.utils.AlphanumComparator;
 
 /** Config properties of the whole program
  * @author ripper
@@ -58,6 +63,7 @@ public class Config extends Object implements Serializable {
     private String uuid = null;
     private int uuidMonth = -1;
     private Date lastStatsSent = null;
+    private byte[]              masterPasswordHash      = null;
 
     /** Get shared instance 
      * @throws IllegalStateException until config is loaded from disk
@@ -287,8 +293,14 @@ public class Config extends Object implements Serializable {
     public Date getLastStatsSent() {
         return lastStatsSent;
     }
+
+    public byte[] getMasterPasswordHash()
+    {
+        return masterPasswordHash;
+    }
+
     // </editor-fold>
-    
+
     // <editor-fold defaultstate="collapsed" desc="Set Methods">
     public void setMainDimension(Dimension mainDimension) {
         Dimension oldMainDimension = this.mainDimension;
@@ -486,6 +498,13 @@ public class Config extends Object implements Serializable {
         Date old = this.lastStatsSent;
         this.lastStatsSent = lastStatsSent;
         changeSupport.firePropertyChange("lastStatsSent", old, lastStatsSent);
+    }
+
+    public void setMasterPasswordHash(byte[] masterPasswordHash)
+    {
+        byte[] old = this.masterPasswordHash;
+        this.masterPasswordHash = masterPasswordHash;
+        changeSupport.firePropertyChange("masterPasswordHash", old, masterPasswordHash);
     }
     // </editor-fold>
 

@@ -1,9 +1,5 @@
 package esmska.persistence;
 
-import a_vcard.android.provider.Contacts;
-import a_vcard.android.syncml.pim.vcard.ContactStruct;
-import a_vcard.android.syncml.pim.vcard.VCardComposer;
-import a_vcard.android.syncml.pim.vcard.VCardException;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.Charset;
@@ -11,27 +7,34 @@ import java.security.GeneralSecurityException;
 import java.text.DateFormat;
 import java.util.Collection;
 import java.util.Locale;
+import java.util.ResourceBundle;
+import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.logging.Logger;
 
+import net.sf.json.JSONArray;
+import net.sf.json.JSONObject;
+
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.Validate;
+
+import a_vcard.android.provider.Contacts;
+import a_vcard.android.syncml.pim.vcard.ContactStruct;
+import a_vcard.android.syncml.pim.vcard.VCardComposer;
+import a_vcard.android.syncml.pim.vcard.VCardException;
 
 import com.csvreader.CsvWriter;
 
 import esmska.data.Contact;
+import esmska.data.EncryptedString;
 import esmska.data.Gateway;
 import esmska.data.GatewayConfig;
 import esmska.data.History;
 import esmska.data.Keyring;
 import esmska.data.SMS;
 import esmska.data.Signature;
-import esmska.utils.L10N;
 import esmska.data.Tuple;
-import java.util.ResourceBundle;
-import java.util.TreeMap;
-import java.util.TreeSet;
-import net.sf.json.JSONArray;
-import net.sf.json.JSONObject;
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.Validate;
+import esmska.utils.L10N;
 
 /** Export program data
  *
@@ -165,9 +168,9 @@ public class ExportManager {
 
         writer.writeComment(l10n.getString("ExportManager.login"));
         for (String gatewayName : keyring.getGatewayNames()) {
-            Tuple<String, String> key = keyring.getKey(gatewayName);
+            Tuple<String, EncryptedString> key = keyring.getKey(gatewayName);
             String login = key.get1();
-            String password = Keyring.encrypt(key.get2());
+            String password = key.get2().getCipherText();
             writer.writeRecord(new String[] {
                 gatewayName,
                 login,

@@ -1,16 +1,5 @@
 package esmska.gui;
 
-import esmska.data.Config;
-import esmska.data.Gateway;
-import esmska.data.Gateways;
-import esmska.data.Icons;
-import esmska.data.Keyring;
-import esmska.data.Links;
-import esmska.data.Queue;
-import esmska.data.SMS;
-import esmska.data.Tuple;
-import esmska.gui.GatewayMessageFrame.TaskPane;
-import esmska.transfer.GatewayExecutor.Problem;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
@@ -18,6 +7,7 @@ import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.text.MessageFormat;
+
 import javax.swing.Box.Filler;
 import javax.swing.GroupLayout;
 import javax.swing.GroupLayout.Alignment;
@@ -30,9 +20,23 @@ import javax.swing.JTextArea;
 import javax.swing.JTextPane;
 import javax.swing.LayoutStyle.ComponentPlacement;
 import javax.swing.SwingConstants;
+
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.Validate;
 import org.openide.awt.Mnemonics;
+
+import esmska.data.Config;
+import esmska.data.EncryptedString;
+import esmska.data.Gateway;
+import esmska.data.Gateways;
+import esmska.data.Icons;
+import esmska.data.Keyring;
+import esmska.data.Links;
+import esmska.data.Queue;
+import esmska.data.SMS;
+import esmska.data.Tuple;
+import esmska.gui.GatewayMessageFrame.TaskPane;
+import esmska.transfer.GatewayExecutor.Problem;
 
 /** Error message from gateway displayed to a user
  *
@@ -50,9 +54,9 @@ public class GatewayErrorMessage extends GatewayMessage {
         String param = sms.getProblem().get2();
         Gateway gw = gateways.get(sms.getGateway());
         String website = gw != null ? gw.getWebsite() : null;
-        Tuple<String, String> key = Keyring.getInstance().getKey(sms.getGateway());
+        Tuple<String, EncryptedString> key = Keyring.getInstance().getKey(sms.getGateway());
         String login = key != null ? key.get1() : "";
-        String password = key != null ? key.get2() : "";
+        String password = key != null ? key.get2().getPlainText() : "";
         
         switch (problem) {
             case CUSTOM_MESSAGE:

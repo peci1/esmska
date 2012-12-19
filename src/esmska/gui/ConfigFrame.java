@@ -1,36 +1,35 @@
 package esmska.gui;
 
-import com.jgoodies.looks.plastic.PlasticLookAndFeel;
-import com.jgoodies.looks.plastic.PlasticTheme;
-import esmska.Context;
-import esmska.data.Gateways.Events;
-import esmska.data.event.ValuedEvent;
-import esmska.gui.ThemeManager.LAF;
-import esmska.data.Config;
-import esmska.data.Contact;
-import esmska.data.Keyring;
-import esmska.data.Gateway;
-import esmska.data.Gateway.Feature;
-import esmska.data.Gateways;
-import esmska.data.Icons;
-import esmska.data.Signature;
-import esmska.data.Signatures;
 import java.awt.Component;
+import java.awt.Image;
+import java.awt.Point;
+import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
+import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
+import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowFocusListener;
 import java.io.IOException;
+import java.text.MessageFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.ResourceBundle;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
 import javax.swing.DefaultComboBoxModel;
+import javax.swing.DefaultListCellRenderer;
 import javax.swing.GroupLayout;
 import javax.swing.GroupLayout.Alignment;
 import javax.swing.ImageIcon;
@@ -38,7 +37,10 @@ import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
+import javax.swing.JDialog;
+import javax.swing.JLabel;
 import javax.swing.JList;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPasswordField;
 import javax.swing.JScrollPane;
@@ -46,59 +48,62 @@ import javax.swing.JSpinner;
 import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
+import javax.swing.KeyStroke;
 import javax.swing.LayoutStyle.ComponentPlacement;
+import javax.swing.ListCellRenderer;
 import javax.swing.ListSelectionModel;
+import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
 import javax.swing.WindowConstants;
+import javax.swing.border.TitledBorder;
 import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
 import javax.swing.event.TableModelEvent;
+import javax.swing.table.AbstractTableModel;
+import javax.swing.table.TableCellRenderer;
+import javax.swing.table.TableColumn;
+import javax.swing.table.TableColumnModel;
+
+import org.apache.commons.lang.ObjectUtils;
+import org.apache.commons.lang.StringUtils;
 import org.jdesktop.beansbinding.AutoBinding.UpdateStrategy;
 import org.jdesktop.beansbinding.BeanProperty;
 import org.jdesktop.beansbinding.Binding;
 import org.jdesktop.beansbinding.BindingGroup;
 import org.jdesktop.beansbinding.Bindings;
 import org.jdesktop.beansbinding.ELProperty;
-import esmska.transfer.ProxyManager;
-import esmska.data.event.AbstractDocumentListener;
-import esmska.utils.L10N;
-import esmska.data.Tuple;
-import esmska.data.event.ValuedListener;
-import esmska.utils.MiscUtils;
-import esmska.utils.RuntimeUtils;
-import java.awt.Image;
-import java.awt.Point;
-import java.awt.Toolkit;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyListener;
-import java.awt.event.MouseAdapter;
-import java.text.MessageFormat;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.ResourceBundle;
-import javax.swing.AbstractAction;
-import javax.swing.DefaultListCellRenderer;
-import javax.swing.JDialog;
-import javax.swing.JLabel;
-import javax.swing.JOptionPane;
-import javax.swing.KeyStroke;
-import javax.swing.ListCellRenderer;
-import javax.swing.SpinnerNumberModel;
-import javax.swing.SwingUtilities;
-import javax.swing.border.TitledBorder;
-import javax.swing.event.DocumentListener;
-import javax.swing.event.ListSelectionListener;
-import javax.swing.table.AbstractTableModel;
-import javax.swing.table.TableCellRenderer;
-import javax.swing.table.TableColumn;
-import javax.swing.table.TableColumnModel;
-import org.apache.commons.lang.ObjectUtils;
-import org.apache.commons.lang.StringUtils;
 import org.openide.awt.Mnemonics;
 import org.pushingpixels.substance.api.SubstanceLookAndFeel;
 import org.pushingpixels.substance.api.renderers.SubstanceDefaultTableCellRenderer;
 import org.pushingpixels.substance.api.skin.SkinInfo;
+
+import com.jgoodies.looks.plastic.PlasticLookAndFeel;
+import com.jgoodies.looks.plastic.PlasticTheme;
+
+import esmska.Context;
+import esmska.data.Config;
+import esmska.data.Contact;
+import esmska.data.EncryptedString;
+import esmska.data.Gateway;
+import esmska.data.Gateway.Feature;
+import esmska.data.Gateways;
+import esmska.data.Gateways.Events;
+import esmska.data.Icons;
+import esmska.data.Keyring;
+import esmska.data.Signature;
+import esmska.data.Signatures;
+import esmska.data.Tuple;
+import esmska.data.event.AbstractDocumentListener;
+import esmska.data.event.ValuedEvent;
+import esmska.data.event.ValuedListener;
+import esmska.gui.ThemeManager.LAF;
+import esmska.transfer.ProxyManager;
+import esmska.utils.L10N;
+import esmska.utils.MiscUtils;
+import esmska.utils.RuntimeUtils;
 
 /** Configure settings form
  *
@@ -323,10 +328,10 @@ public class ConfigFrame extends javax.swing.JFrame {
             return;
         }
         
-        Tuple<String, String> key = new Tuple<String, String>(loginField.getText(),
-            new String(passwordField.getPassword()));
+        Tuple<String, EncryptedString> key = new Tuple<String, EncryptedString>(loginField.getText(),
+                EncryptedString.createFromPlainText(new String(passwordField.getPassword())));
         
-        if (StringUtils.isEmpty(key.get1()) && StringUtils.isEmpty(key.get2())) {
+        if (StringUtils.isEmpty(key.get1()) && StringUtils.isEmpty(key.get2().getPlainText())) {
             //if both empty, remove the key
             keyring.removeKey(gateway.getName());
         } else {
@@ -1651,14 +1656,14 @@ private void demandDeliveryReportCheckBoxActionPerformed(ActionEvent evt) {//GEN
                 demandDeliveryReportCheckBox.setSelected(false);
             }
 
-            Tuple<String, String> key = keyring.getKey(gateway != null ? gateway.getName() : null);
+            Tuple<String, EncryptedString> key = keyring.getKey(gateway != null ? gateway.getName() : null);
             if (key == null) {
                 loginField.setText(null);
                 passwordField.setText(null);
             } else {
                 loginField.setText(key.get1());
                 loginField.setCaretPosition(0);
-                passwordField.setText(key.get2());
+                passwordField.setText(key.get2().getPlainText());
                 passwordField.setCaretPosition(0);
             }
             
