@@ -8,16 +8,16 @@ msgid ""
 msgstr ""
 "Project-Id-Version: esmska\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2012-11-26 22:30+0200\n"
-"PO-Revision-Date: 2011-09-13 16:01+0000\n"
+"POT-Creation-Date: 2014-06-23 00:23+0200\n"
+"PO-Revision-Date: 2013-04-25 12:43+0000\n"
 "Last-Translator: Phoenix <Unknown>\n"
 "Language-Team: Swedish <sv@li.org>\n"
 "Language: sv\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"X-Launchpad-Export-Date: 2011-12-04 04:44+0000\n"
-"X-Generator: Launchpad (build 14418)\n"
+"X-Launchpad-Export-Date: 2013-06-03 06:03+0000\n"
+"X-Generator: Launchpad (build 16660)\n"
 
 #: AboutFrame.Acknowledge
 msgid "I acknowledge that"
@@ -500,15 +500,16 @@ msgstr ""
 msgid "N&ame:"
 msgstr "N&amn:"
 
-#: ConfigFrame.senderNameTextField.toolTipText
-msgid ""
+#: ConfigFrame.senderNamePopup.exampleText
+#, fuzzy
+msgid "<html><i>Preview:</i><br>{0}&lt;message text&gt;</html>"
+msgstr ""
 "<html>\n"
-"Sender name to append to the message.<br>\n"
-"<br>\n"
-"The name occupies space in the message but is not visible,<br>\n"
-"therefore the message text coloring and message counter indicator<br>\n"
-"may seem not to match.\n"
+"Själva meddelandetexten\n"
 "</html>"
+
+#: ConfigFrame.senderNameTextField.toolTipText
+msgid "Sender name to prepend to the message."
 msgstr ""
 
 #: ConfigFrame.senderNumberLabel.text
@@ -516,7 +517,6 @@ msgid "&Number:"
 msgstr "&Nummer:"
 
 #: ConfigFrame.senderNumberTextField.toolTipText
-#, fuzzy
 msgid ""
 "<html>Sender number in an international format (starting with '+' sign)."
 "<br>\n"
@@ -524,9 +524,6 @@ msgid ""
 "If this field is disabled then this feature is not supported<br>\n"
 "by the selected gateway.</html>"
 msgstr ""
-"<html>Avsändarnummer i ett internationellt format (börjar med tecknet '+')."
-"<br>\n"
-"Alla gateways stödjer inte denna funktion.</html>"
 
 #: ConfigFrame.showPasswordCheckBox.text
 msgid "Sho&w password"
@@ -756,6 +753,13 @@ msgid ""
 "shorter in many labels.\n"
 "</html>"
 msgstr ""
+"<html>\n"
+"Internationella landsprefixnumret börjar med ett '+'-tecken.<br>\n"
+"När detta fylls i ska dessa prefix vara närvarande med alla siffror skrivna "
+"i<br>\n"
+"icke-internationellt format. Dessutom kommer utseendet för dessa siffror att "
+"bli mycket kortare i många etiketter.\n"
+"</html>"
 
 #: CountryPrefixPanel.jLabel2.text
 msgid "The &default country prefix number:"
@@ -983,9 +987,10 @@ msgid "Contact export finished successfully!"
 msgstr "Exportering av kontakt lyckades!"
 
 #: ExportManager.history
+#, fuzzy
 msgid ""
 "Sent messages history (date, recipient name, recipient number, gateway, "
-"message text, sender name, sender number)"
+"message text, sender name, sender number, message id)"
 msgstr ""
 "Skicka meddelandehistorik (datum, mottagarnamn, mottagarnummer, gateway, "
 "meddelandetext, avsändarnamn, avsändarnummer)"
@@ -1001,10 +1006,8 @@ msgstr ""
 #: ExportManager.sms_queue
 msgid ""
 "SMS queue to be sent (recipient name, recipient number, gateway, message "
-"text, sender name, sender number)"
+"text, message ID)"
 msgstr ""
-"SMS-kö som ska skickas (mottagarens namn, mottagarens nummer, "
-"meddelandetext, avsändarens namn, avsändarens nummer)"
 
 #: ExportManager.vcard_filter
 msgctxt "ExportManager.vcard_filter"
@@ -1250,6 +1253,9 @@ msgid ""
 "both). Please enter it in <a href=\"{0}\">the given gateway settings</a> and "
 "try to send the message again."
 msgstr ""
+"Denna gateway kräver att en avsändarsignatur ska fyllas i (ett namn, nummer "
+"eller båda). Var god ange det i <a href=\"{0}\"> de angivna gateway-"
+"inställningarna</a> och försök att skicka meddelandet igen."
 
 #: GatewayProblem.UNKNOWN
 msgid ""
@@ -1270,6 +1276,11 @@ msgid ""
 "If this problem persists for a longer time and you can send your messages "
 "through the gateway''s webpage, please <a href=\"{1}\">report it</a>."
 msgstr ""
+"Det var inte möjligt att upptäcka orsaken till felet. Denna gateway kan ha "
+"stöt på några problem för tillfället. Besök <a href=\"{0}\">{0}</a> och se "
+"till att denna gateway fungerar.<br>\n"
+"Var god <a href=\"{1}\">rapportera det</a> om problemet kvarstår under en "
+"längre tid och du kan skicka dina meddelanden genom din gateways hemsida."
 
 #. #If you want to use single quotes (') in this translation, you must write them doubled ('')!
 #: GatewayProblem.UNUSABLE
@@ -1531,6 +1542,11 @@ msgid ""
 "a copy them to Esmska. Contacts in your old application will remain intact.\n"
 "</html>"
 msgstr ""
+"<html>\n"
+"Kontaktimportering kommer att låta dig läsa dina kontakter från andra "
+"applikationer och kopiera dem till Esmska. Kontakterna i din gamla "
+"applikation kommer att förbli orörda.\n"
+"</html>"
 
 #: ImportFrame.jLabel22.text
 msgid ""
@@ -1622,24 +1638,6 @@ msgstr ""
 "<html><h2>Esmska körs redan!</h2>Esmska har startats en gång. Du kan inte "
 "köra flera program samtidigt.<br>Detta fönster kommer att avslutas nu.</html>"
 
-#: Main.brokenWebstart
-msgid ""
-"You're currently running Esmska using OpenJDK and Java WebStart.\n"
-"Unfortunatelly this combination is currently broken and doesn't work.\n"
-"Either install Sun Java and use Java WebStart, or download Esmska to your "
-"computer\n"
-"and run it the common way.\n"
-"\n"
-"Esmska will now quit."
-msgstr ""
-"Du kör för tillfället Esmska med hjälp av OpenJDK och Java WebStart.\n"
-"Tyvärr är denna kombination trasig och fungerar inte.\n"
-"Antingen installerar du Sun Java och använder Java WebStart, eller laddar "
-"ned Esmska på din dator\n"
-"och kör den på det vanliga sättet.\n"
-"\n"
-"Esmska kommer att avslutas nu."
-
 #. #If you want to use single quotes (') in this translation, you must write them doubled ('')!
 #: Main.cant_read_config
 msgid ""
@@ -1691,6 +1689,9 @@ msgid ""
 "files<br>which is necessary for the program to work properly. It is "
 "recommended to use <br>Java from Sun. The program will now exit.</html>"
 msgstr ""
+"<html>Din aktuella Java-version stöder inte att köra JavaScript-filer<br> "
+"som är nödvändigt för att programmet ska fungera riktigt. Det rekommenderas "
+"att använda <br>Java från Sun. Programmet kommer nu avslutas.</html>"
 
 #: Main.run_anyway
 msgid "Run anyway"
@@ -2083,11 +2084,6 @@ msgstr "{0} tecken ({1} SMS)"
 msgid "{0} chars (can''t be sent!)"
 msgstr "{0} tecken (kan inte skickas!)"
 
-#. #If you want to use single quotes (') in this translation, you must write them doubled ('')!
-#: SMSPanel.smsCounterLabel.3
-msgid "{0} chars"
-msgstr "{0} tecken"
-
 #: SMSPanel.smsCounterLabel.text
 msgid "0 chars (0 sms)"
 msgstr "0 tecken (0 SMS)"
@@ -2113,6 +2109,9 @@ msgid ""
 "<br>More information is available in the program log.<br>Please report this "
 "problem on <a href=\"{0}\">program homepage</a>."
 msgstr ""
+"Några allvarliga omständigheter hindrade Esmska från att skicka meddelandet."
+"<br>Mer information finns i programloggen.<br>Var god rapportera detta "
+"problem på <a href=\"{0}\">programmets hemsida</a>."
 
 #: SMSSender.no_gateway
 msgid "no gateway"
@@ -2175,6 +2174,7 @@ msgstr "Ingen"
 #: SignatureComboBox.tooltip
 msgid "The signature to append to the message (sender number and name)."
 msgstr ""
+"Signaturen som ska läggas till meddelandet (avsändarens nummer och namn)."
 
 #: StatusPanel.progressBar.string
 msgctxt "StatusPanel.progressBar.string"
@@ -2448,8 +2448,39 @@ msgstr "Gateway uppdaterad: {0}"
 msgid "Some of gateway updates couldn't be installed."
 msgstr "En del gateways kunde inte installeras."
 
-#~ msgid "Username needed for logging in to the gateway"
-#~ msgstr "Användarnamn krävs för att logga in på denna gateway"
+#~ msgid ""
+#~ "<html>\n"
+#~ "Sender name to append to the message.<br>\n"
+#~ "<br>\n"
+#~ "The name occupies space in the message but is not visible,<br>\n"
+#~ "therefore the message text coloring and message counter indicator<br>\n"
+#~ "may seem not to match.\n"
+#~ "</html>"
+#~ msgstr ""
+#~ "<html>\n"
+#~ "Avsändarens namn som ska läggas till i meddelandet..<br>\n"
+#~ "<br>\n"
+#~ "Namnet upptar utrymme i meddelandet, men syns inte,<br>\n"
+#~ "där meddelandets textfärg och räknarindikator<br>\n"
+#~ "verkar inte stämma överens.\n"
+#~ "</html>"
 
-#~ msgid "The password belonging to the username"
-#~ msgstr "Lösenordet som hör till användarnamnet"
+#~ msgid ""
+#~ "You're currently running Esmska using OpenJDK and Java WebStart.\n"
+#~ "Unfortunatelly this combination is currently broken and doesn't work.\n"
+#~ "Either install Sun Java and use Java WebStart, or download Esmska to your "
+#~ "computer\n"
+#~ "and run it the common way.\n"
+#~ "\n"
+#~ "Esmska will now quit."
+#~ msgstr ""
+#~ "Du kör för tillfället Esmska med hjälp av OpenJDK och Java WebStart.\n"
+#~ "Tyvärr är denna kombination trasig och fungerar inte.\n"
+#~ "Antingen installerar du Sun Java och använder Java WebStart, eller laddar "
+#~ "ned Esmska på din dator\n"
+#~ "och kör den på det vanliga sättet.\n"
+#~ "\n"
+#~ "Esmska kommer att avslutas nu."
+
+#~ msgid "{0} chars"
+#~ msgstr "{0} tecken"

@@ -1,8 +1,20 @@
 package esmska.update;
 
+import com.csvreader.CsvReader;
+import esmska.Context;
+import esmska.data.Config;
+import esmska.data.CountryPrefix;
+import esmska.data.Keyring;
+import esmska.data.Signature;
+import esmska.data.Signatures;
+import esmska.data.Tuple;
+import esmska.persistence.ContinuousSaveManager;
+import esmska.persistence.PersistenceManager;
 import java.io.File;
 import java.lang.reflect.Field;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -15,6 +27,7 @@ import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathFactory;
 
 import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.ObjectUtils;
 import org.apache.commons.lang.StringUtils;
 import org.w3c.dom.Document;
@@ -108,7 +121,6 @@ public class LegacyUpdater {
         //changes to 0.22.0
         if (Config.compareProgramVersions(version, "0.21") <= 0) {
             //transfer senderName and senderNumber settings
-            
             Field configFileField = PersistenceManager.class.getDeclaredField("configFile");
             configFileField.setAccessible(true);
             File configFile = (File) configFileField.get(null);
@@ -128,6 +140,62 @@ public class LegacyUpdater {
             }
             if (StringUtils.isNotEmpty(senderNumber)) {
                 defaultSig.setUserNumber(senderNumber);
+            }
+        }
+        
+        //changes to 1.4
+        if (Config.compareProgramVersions(version, "1.4") < 0) {
+            //add message ID to queue
+            logger.fine("Updating queue to add message IDs...");
+            try {
+                Field queueFileField = PersistenceManager.class.getDeclaredField("queueFile");
+                queueFileField.setAccessible(true);
+                File queueFile = (File) queueFileField.get(null);
+
+                List<String> lines = FileUtils.readLines(queueFile, "UTF-8");
+                ArrayList<String> newLines = new ArrayList<String>();
+                for (String line : lines) {
+                    newLines.add(line + ",");
+                }
+                FileUtils.writeLines(queueFile, "UTF-8", newLines);
+            } catch (Exception ex) {
+                logger.log(Level.SEVERE, "Updating queue file failed", ex);
+            }
+        }
+
+        //changes to 1.7
+        if (Config.compareProgramVersions(version, "1.6") <= 0) {
+            // change signature suffix to signature prefix -> append a colon
+            // to the signature
+            logger.fine("Updating signature suffix to prefix...");
+            Context.persistenceManager.loadGateways();
+            Context.persistenceManager.loadGatewayProperties();
+            ArrayList<Signature> sigList = new ArrayList<Signature>();
+            sigList.addAll(Signatures.getInstance().getAll());
+            sigList.addAll(Signatures.getInstance().getSpecial());
+            for (Signature signature : sigList) {
+                String userName = signature.getUserName();
+                if (StringUtils.isNotEmpty(userName)) {
+                    signature.setUserName(userName + ":");
+                }
+            }
+            Context.persistenceManager.saveGatewayProperties();
+        }
+        if (Config.compareProgramVersions(version, "1.6.99") <= 0) {
+            //add message ID to history
+            logger.fine("Updating history to add sms IDs...");
+            try {
+                Field queueFileField = PersistenceManager.class.getDeclaredField("historyFile");
+                queueFileField.setAccessible(true);
+                File queueFile = (File) queueFileField.get(null);
+                List<String> lines = FileUtils.readLines(queueFile, "UTF-8");
+                ArrayList<String> newLines = new ArrayList<String>();
+                for (String line : lines) {
+                    newLines.add(line + ",");
+                }
+                FileUtils.writeLines(queueFile, "UTF-8", newLines);
+            } catch (Exception ex) {
+                logger.log(Level.SEVERE, "Updating history file failed", ex);
             }
         }
     }

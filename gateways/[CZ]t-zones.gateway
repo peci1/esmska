@@ -4,7 +4,7 @@ function getName() {
 }
 
 function getVersion() {
-    return "2012-08-24"
+    return "2014-06-01"
 }
 
 function getMaintainer() {
@@ -12,11 +12,11 @@ function getMaintainer() {
 }
 
 function getMinProgramVersion() {
-    return "0.22"
+    return "1.6.99.4"
 }
 
 function getWebsite() {
-    return "http://sms.t-zones.cz"
+    return "http://sms.t-mobile.cz"
 }
 
 function getDescription() {
@@ -39,14 +39,6 @@ function getMaxChars() {
     return 765
 }
 
-function getMaxParts() {
-    return 1
-}
-
-function getSignatureExtraLength() {
-    return 0
-}
-
 function getDelayBetweenMessages() {
     return 0
 }
@@ -61,6 +53,10 @@ function getFeatures() {
 }
 
 function send() {
+	// message, that actually isn't an error, just a warning
+	var mych5warn_cs = "SMS odeslané na vybraná čísla mimo síť T-Mobile z tarifů Přátelé, Mých5 a Bav Se s Mých5 jsou účtovány jako SMS do ostatních sítí, nikoli výhodnější sazbou z tarifu."
+	var mych5warn_en = "SMS sent to selected numbers outside the network of T-Mobile tariffs Pratele, Mych5 and Bav Se s Mych5 are billed as an SMS to other networks and not favorable rate of tariff."
+
     // check that login and password supplied
     if (LOGIN.length == 0 || PASSWORD.length == 0) {
         EXEC.setProblem("WRONG_AUTH")
@@ -71,7 +67,7 @@ function send() {
     var logged = false
 
     // start page
-    content = EXEC.getURL("https://sms.client.tmo.cz/closed.jsp", [])
+    content = EXEC.getURL("https://sms.t-mobile.cz/closed.jsp", [])
 
     // search if we are already logged in (previous logout failed or something)
     re = /\/.gang\/logout/
@@ -95,11 +91,11 @@ function send() {
         if (match) {
             re = /Uživatel je již přihlášen/
             match2 = re.exec(content)
-            if (!match2) {
-                // login was not successfull
-                EXEC.setProblem("GATEWAY_MESSAGE", match[1])
-                logout()
-                return false
+            if (!match2 && match[1] != mych5warn_en && match[1] != mych5warn_cs) {
+	            // login was not successfull
+	            EXEC.setProblem("GATEWAY_MESSAGE", match[1])
+	            logout()
+	            return false
             }
             // we are already logged in
         }
@@ -108,15 +104,15 @@ function send() {
     }
 
     // sms sending page
-    content = EXEC.getURL("https://sms.client.tmo.cz/closed.jsp", [])
+    content = EXEC.getURL("https://sms.t-mobile.cz/closed.jsp", [])
 
     // seach for errors, sometimes overload errors are displayed here
     re = /<p class="text-orange.*?">([^]*?)<\/p>/
     match = re.exec(content)
-    if (match) {
-        EXEC.setProblem("GATEWAY_MESSAGE", match[1])
-        logout()
-        return false
+    if (match && match[1] != mych5warn_en && match[1] != mych5warn_cs) {
+	    EXEC.setProblem("GATEWAY_MESSAGE", match[1])
+	    logout()
+	    return false
     }
 
     // find counter
@@ -133,7 +129,7 @@ function send() {
                 "confirmation", RECEIPT ? "1" : "0",
                 "history", "on",
                 "TMCZcheck", "on"]
-    content = EXEC.postURL("https://sms.client.tmo.cz/closed.jsp", [], postData)
+    content = EXEC.postURL("https://sms.t-mobile.cz/closed.jsp", [], postData)
 
     // if some SMS is paid, there will be one more confirmation form
     re = /Tito adresáti jsou mimo síť T-Mobile|Recipients out of T-Mobile CZ network/
@@ -147,7 +143,7 @@ function send() {
         postData = ["counter", counter,
                     "tmcz", "1",
                     "rcpt1", NUMBER]
-        content = EXEC.postURL("https://sms.client.tmo.cz/closed.jsp", [], postData)
+        content = EXEC.postURL("https://sms.t-mobile.cz/closed.jsp", [], postData)
     }
     
     // check if message was successfully sent
@@ -184,5 +180,5 @@ function send() {
 // custom function for logging out
 function logout() {
     // visit logout page
-    EXEC.getURL("https://login.client.tmo.cz/um/cs/logout.jsp", []);
+    EXEC.getURL("https://www.t-mobile.cz/.gang/logout/tzones", []);
 }

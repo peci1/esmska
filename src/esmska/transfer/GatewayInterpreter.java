@@ -1,5 +1,13 @@
 package esmska.transfer;
 
+import esmska.data.Keyring;
+import esmska.data.Gateway;
+import esmska.data.Gateways;
+import esmska.data.SMS;
+import esmska.data.Tuple;
+import esmska.transfer.GatewayExecutor.Problem;
+import esmska.utils.L10N;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.util.Arrays;
@@ -99,8 +107,10 @@ public class GatewayInterpreter {
             return false;
         } finally {
             try {
-                reader.close();
-            } catch (Exception ex) {
+                if (reader != null){
+                    reader.close();
+                }
+            } catch (IOException ex) {
                 logger.log(Level.SEVERE, "Error closing gateway script file " + gateway, ex);
             }
         }

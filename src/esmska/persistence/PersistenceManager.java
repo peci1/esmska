@@ -62,8 +62,6 @@ public class PersistenceManager {
     private static final String LOCK_FILENAME = "running.lock";
     private static final String LOG_FILENAME = "console.log";
     private static final String DEPRECATED_GWS_FILENAME = "deprecated.xml";
-    private static final String GATEWAY_RESOURCE = "/esmska/gateways/scripts";
-    private static final String DEPRECATED_GWS_RESOURCE = GATEWAY_RESOURCE + "/" + DEPRECATED_GWS_FILENAME;
     private static final String GATEWAY_PROPS_FILENAME = "gateways.json";
     
     private static File configDir =
@@ -73,7 +71,7 @@ public class PersistenceManager {
             new File(System.getProperty("user.home") + File.separator + ".local" +
             File.separator + "share", PROGRAM_DIRNAME);
 
-    private static File globalGatewayDir = new File(GATEWAY_DIRNAME);
+    private static File globalGatewayDir = new File(GATEWAY_DIRNAME).getAbsoluteFile();
     private static File localGatewayDir = new File(dataDir, GATEWAY_DIRNAME);
     private static File backupDir = new File(configDir, BACKUP_DIRNAME);
     private static File configFile = new File(configDir, CONFIG_FILENAME);
@@ -92,9 +90,8 @@ public class PersistenceManager {
     /** Creates a new instance of PersistenceManager */
     private PersistenceManager() throws IOException {
         //adjust program dir according to operating system
+        IntegrationAdapter integration = IntegrationAdapter.getInstance();
         if (!customPathSet) {
-            IntegrationAdapter integration = IntegrationAdapter.getInstance();
-
             String programDir = integration.getProgramDirName(PROGRAM_DIRNAME);
             File confDir = integration.getConfigDir(configDir);
             File datDir = integration.getDataDir(dataDir);
@@ -107,7 +104,11 @@ public class PersistenceManager {
             }
             logFile = integration.getLogFile(logFile);
         }
-        
+
+        //adjust gateway dir according to operating system
+        globalGatewayDir = integration.getGatewayDir(globalGatewayDir);
+        deprecatedGWsFile = new File(globalGatewayDir, DEPRECATED_GWS_FILENAME);
+
         //create config dir if necessary
         if (!configDir.exists() && !configDir.mkdirs()) {
             throw new IOException("Can't create config dir '" + configDir.getAbsolutePath() + "'");
@@ -368,28 +369,22 @@ public class PersistenceManager {
         TreeSet<Gateway> localGateways = new TreeSet<Gateway>();
         HashSet<DeprecatedGateway> deprecatedGateways = new HashSet<DeprecatedGateway>();
         //global gateways
-        if (!RuntimeUtils.isRunAsWebStart() && globalGatewayDir.exists()) {
+        if (globalGatewayDir.exists()) {
             globalGateways = new ArrayList<Gateway>(ImportManager.importGateways(globalGatewayDir, false));
-        } else if (RuntimeUtils.isRunAsWebStart()) {
-            globalGateways = new ArrayList<Gateway>(ImportManager.importGateways(GATEWAY_RESOURCE));
         } else {
             throw new IOException("Could not find gateways directory '" +
-                    globalGatewayDir.getAbsolutePath() + "' nor jar gateways resource '" +
-                    GATEWAY_RESOURCE + "'");
+                    globalGatewayDir.getAbsolutePath() + "'");
         }
         //local gateways
         if (localGatewayDir.exists()) {
             localGateways = ImportManager.importGateways(localGatewayDir, true);
         }
         //deprecated gateways
-        if (!RuntimeUtils.isRunAsWebStart() && deprecatedGWsFile.canRead()) {
+        if (deprecatedGWsFile.canRead()) {
             deprecatedGateways = ImportManager.importDeprecatedGateways(deprecatedGWsFile);
-        } else if (RuntimeUtils.isRunAsWebStart()) {
-            deprecatedGateways = ImportManager.importDeprecatedGateways(DEPRECATED_GWS_RESOURCE);
         } else {
             logger.warning("Could not find deprecated gateways file: '" +
-                    deprecatedGWsFile.getAbsolutePath() + "' nor jar resource '" +
-                    DEPRECATED_GWS_RESOURCE + "'");
+                    deprecatedGWsFile.getAbsolutePath() + "'");
         }
         //filter out deprecated gateways
         for (DeprecatedGateway deprecated : deprecatedGateways) {
@@ -494,8 +489,8 @@ public class PersistenceManager {
         //move script file to correct location
         File scriptFileGlobal = new File(globalGatewayDir, scriptName + ".gateway");
         File scriptFileLocal = new File(localGatewayDir, scriptName + ".gateway");
-        if (!RuntimeUtils.isRunAsWebStart() && canWrite(globalGatewayDir)
-                && (!scriptFileGlobal.exists() || canWrite(scriptFileGlobal))) {
+        if (canWrite(globalGatewayDir) && 
+                (!scriptFileGlobal.exists() || canWrite(scriptFileGlobal))) {
             //first try global dir
             moveFileSafely(temp, scriptFileGlobal);
             //set readable for everyone
@@ -516,8 +511,8 @@ public class PersistenceManager {
         if (icon != null) {
             File iconFileGlobal = new File(globalGatewayDir, scriptName + ".png");
             File iconFileLocal = new File(localGatewayDir, scriptName + ".png");
-            if (!RuntimeUtils.isRunAsWebStart() && canWrite(globalGatewayDir)
-                    && (!iconFileGlobal.exists() || canWrite(iconFileGlobal))) {
+            if (canWrite(globalGatewayDir) && 
+                    (!iconFileGlobal.exists() || canWrite(iconFileGlobal))) {
                 //first try global dir
                 moveFileSafely(iconTemp, iconFileGlobal);
                 logger.finer("Saved gateway icon into file: " + iconFileGlobal.getAbsolutePath());
@@ -574,7 +569,7 @@ public class PersistenceManager {
     }
 
     /** Try to obtain an exclusive lock on a File.
-     * @throws if lock can't be obtained
+     * @throws IOException if lock can't be obtained
      */
     private void lock(File file) throws IOException {
         Validate.notNull(file);

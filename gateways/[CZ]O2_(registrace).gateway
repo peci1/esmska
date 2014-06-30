@@ -4,7 +4,7 @@ function getName() {
 }
 
 function getVersion() {
-    return "2012-11-26"
+    return "2014-06-01"
 }
 
 function getMaintainer() {
@@ -12,7 +12,7 @@ function getMaintainer() {
 }
 
 function getMinProgramVersion() {
-    return "1.3beta1"
+    return "1.6.99.4"
 }
 
 function getWebsite() {
@@ -39,14 +39,6 @@ function getSMSLength() {
 
 function getMaxChars() {
     return 160
-}
-
-function getMaxParts() {
-    return 5
-}
-
-function getSignatureExtraLength() {
-    return 0
 }
 
 function getDelayBetweenMessages() {
@@ -93,34 +85,29 @@ function send() {
         content = EXEC.postURL("http://sms.1188.cz/signup", [], postData)
         
         // check log in errors
-        re = /nesprávný login nebo heslo/
+        re = /Nesprávně zadané přihlašovací údaje/
         match = re.exec(content)
         if (match) {
-            // login was not successfull
+            // login credentials are incorrect
             EXEC.setProblem("WRONG_AUTH")
+            logout()
+            return false
+        }
+        re = /<div class="error_message">([^<]*)<\/div>/
+        match = re.exec(content)
+        if (match) {
+            // some other problem
+            EXEC.setProblem("GATEWAY_MESSAGE", match[1])
             logout()
             return false
         }
         
         // we should be logged in now
     }
-    
-    // download image
-    content = EXEC.getURL("http://www.google.com/recaptcha/api/challenge?k=6LfFmc8SAAAAAKZS7BmYx4cEys7zo1y_LYHgxZ5o&ajax=1&cachestop=0.3157223965972662", [])
-    re = /challenge : '(.+)',/
-    match = content.match(re)
-    challenge = match[1]
-    content = EXEC.getURL("http://www.google.com/recaptcha/api/image", 
-                          ["c", challenge])
-    
-    // show image
-    code = EXEC.recognizeImage(content, "")
 
     // send message
     postData = ["sms[phone_numbers][]", NUMBER,
                 "sms[text]", MESSAGE,
-                "recaptcha_challenge_field", challenge,
-                "recaptcha_response_field", code,
                ]
     content = EXEC.postURL("http://sms.1188.cz/sms", [], postData)
 

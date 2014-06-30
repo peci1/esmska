@@ -4,7 +4,7 @@ function getName() {
 }
 
 function getVersion() {
-    return "2012-08-04"
+    return "2014-06-23"
 }
 
 function getMaintainer() {
@@ -12,7 +12,7 @@ function getMaintainer() {
 }
 
 function getMinProgramVersion() {
-    return "0.22"
+    return "1.6.99.4"
 }
 
 function getWebsite() {
@@ -37,14 +37,6 @@ function getSMSLength() {
 
 function getMaxChars() {
     return 760
-}
-
-function getMaxParts() {
-    return 1
-}
-
-function getSignatureExtraLength() {
-    return 0
 }
 
 function getDelayBetweenMessages() {
@@ -176,7 +168,7 @@ function logout() {
 
 // decide whether message was paid and if it was, fill SupplementalMessage
 function isPaid(content) {
-    re_paid = /Dle Vašeho tarifu jsme Vám zaúčtovali \d+ SMS \w+./
+    re_paid = /Dle Vašeho tarifu jsme Vám zaúčtovali \d+ SMS [^\.]+\./
     match_paid = re_paid.exec(content)
     re_free = /vše bylo zdarma/
     match_free = re_free.exec(content)

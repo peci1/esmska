@@ -15,7 +15,6 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.awt.event.WindowFocusListener;
 import java.io.IOException;
 import java.text.MessageFormat;
 import java.util.ArrayList;
@@ -48,10 +47,53 @@ import javax.swing.JSpinner;
 import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
+import javax.swing.LayoutStyle.ComponentPlacement;
+import javax.swing.ListSelectionModel;
+import javax.swing.SwingConstants;
+import javax.swing.WindowConstants;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.TableModelEvent;
+import org.jdesktop.beansbinding.AutoBinding.UpdateStrategy;
+import org.jdesktop.beansbinding.BeanProperty;
+import org.jdesktop.beansbinding.Binding;
+import org.jdesktop.beansbinding.BindingGroup;
+import org.jdesktop.beansbinding.Bindings;
+import org.jdesktop.beansbinding.ELProperty;
+import esmska.transfer.ProxyManager;
+import esmska.data.event.AbstractDocumentListener;
+import esmska.utils.L10N;
+import esmska.data.Tuple;
+import esmska.data.event.ValuedListener;
+import esmska.utils.MiscUtils;
+import esmska.utils.RuntimeUtils;
+import java.awt.Image;
+import java.awt.Point;
+import java.awt.Toolkit;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyListener;
+import java.awt.event.MouseAdapter;
+import java.text.MessageFormat;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.ResourceBundle;
+import javax.swing.AbstractAction;
+import javax.swing.DefaultListCellRenderer;
+import javax.swing.JDialog;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JToolTip;
 import javax.swing.KeyStroke;
 import javax.swing.LayoutStyle.ComponentPlacement;
 import javax.swing.ListCellRenderer;
 import javax.swing.ListSelectionModel;
+import javax.swing.Popup;
+import javax.swing.PopupFactory;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
@@ -122,11 +164,17 @@ public class ConfigFrame extends javax.swing.JFrame {
     private static final HashMap<String, Object> originalSettings = new HashMap<String, Object>();
     private final GatewayTableModel gwTableModel =  new GatewayTableModel();
     private final GatewaySelectionListener gwSelectionListener = new GatewaySelectionListener();
+    private Popup senderNamePopup;
 
     public enum Tabs {
         GENERAL, APPEARANCE, GATEWAYS, PRIVACY, CONNECTION
     }
 
+    /** Used for senderNamePopup */
+    private enum PopupUpdateType {
+        SHOW, UPDATE, HIDE
+    }
+    
     /** Creates new form ConfigFrame */
     public ConfigFrame() {
         initComponents();
@@ -210,6 +258,12 @@ public class ConfigFrame extends javax.swing.JFrame {
             @Override
             public void onUpdate(DocumentEvent e) {
                 updateSenderNumberWarnLabel();
+            }
+        });
+        senderNameTextField.getDocument().addDocumentListener(new AbstractDocumentListener() {
+            @Override
+            public void onUpdate(DocumentEvent e) {
+                updateSenderNamePopup(PopupUpdateType.UPDATE);
             }
         });
         DocumentListener keyringListener = new AbstractDocumentListener() {
@@ -376,6 +430,37 @@ public class ConfigFrame extends javax.swing.JFrame {
         }
     }
 
+    /** Update the text in senderNamePopup and its visibility */
+    private void updateSenderNamePopup(PopupUpdateType updateType) {
+        if (senderNamePopup != null) {
+            senderNamePopup.hide();
+        }
+        
+        if (updateType == PopupUpdateType.SHOW ||
+                (updateType == PopupUpdateType.UPDATE && senderNamePopup != null)) {
+            String signature = MiscUtils.escapeHtml(senderNameTextField.getText());
+            JToolTip toolTip = new JToolTip();
+            toolTip.setTipText(MessageFormat.format(
+                    l10n.getString("ConfigFrame.senderNamePopup.exampleText"),
+                    signature));
+            toolTip.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    if (senderNamePopup != null) {
+                        senderNamePopup.hide();
+                    }
+                }
+            });
+            int x = senderNameLabel.getLocationOnScreen().x + senderNameTextField.getHeight() / 2;
+            int y = senderNameTextField.getLocationOnScreen().y + senderNameTextField.getHeight() - 2;
+            senderNamePopup = PopupFactory.getSharedInstance().getPopup(
+                    senderNameTextField, toolTip, x, y);
+            senderNamePopup.show();
+        } else {
+            senderNamePopup = null;
+        }
+    }
+    
     /** Save all properties of the currently selected signature. */
     private void updateSignature() {
         if (!fullyInicialized) {
@@ -473,25 +558,24 @@ public class ConfigFrame extends javax.swing.JFrame {
 
         setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
         setTitle(l10n.getString("ConfigFrame.title")); // NOI18N
-        addWindowFocusListener(new WindowFocusListener() {
-            public void windowGainedFocus(WindowEvent evt) {
-                formWindowGainedFocus(evt);
-            }
-            public void windowLostFocus(WindowEvent evt) {
-            }
-        });
         addWindowListener(new WindowAdapter() {
             public void windowClosing(WindowEvent evt) {
                 formWindowClosing(evt);
             }
         });
-        Mnemonics.setLocalizedText(removeAccentsCheckBox, l10n.getString("ConfigFrame.removeAccentsCheckBox.text"));
+        addComponentListener(new ComponentAdapter() {
+            public void componentShown(ComponentEvent evt) {
+                formComponentShown(evt);
+            }
+        });
+
+        Mnemonics.setLocalizedText(removeAccentsCheckBox, l10n.getString("ConfigFrame.removeAccentsCheckBox.text")); // NOI18N
         removeAccentsCheckBox.setToolTipText(l10n.getString("ConfigFrame.removeAccentsCheckBox.toolTipText")); // NOI18N
 
         Binding binding = Bindings.createAutoBinding(UpdateStrategy.READ_WRITE, config, ELProperty.create("${removeAccents}"), removeAccentsCheckBox, BeanProperty.create("selected"));
         bindingGroup.addBinding(binding);
 
-        Mnemonics.setLocalizedText(announceProgramUpdatesCheckBox, l10n.getString("ConfigFrame.announceProgramUpdatesCheckBox.text"));
+        Mnemonics.setLocalizedText(announceProgramUpdatesCheckBox, l10n.getString("ConfigFrame.announceProgramUpdatesCheckBox.text")); // NOI18N
         announceProgramUpdatesCheckBox.setToolTipText(l10n.getString("ConfigFrame.announceProgramUpdatesCheckBox.toolTipText")); // NOI18N
 
         binding = Bindings.createAutoBinding(UpdateStrategy.READ_WRITE, config, ELProperty.create("${announceProgramUpdates}"), announceProgramUpdatesCheckBox, BeanProperty.create("selected"));
@@ -503,13 +587,13 @@ public class ConfigFrame extends javax.swing.JFrame {
             }
         });
 
-        Mnemonics.setLocalizedText(unstableUpdatesCheckBox, l10n.getString("ConfigFrame.unstableUpdatesCheckBox.text"));
+        Mnemonics.setLocalizedText(unstableUpdatesCheckBox, l10n.getString("ConfigFrame.unstableUpdatesCheckBox.text")); // NOI18N
         unstableUpdatesCheckBox.setToolTipText(l10n.getString("ConfigFrame.unstableUpdatesCheckBox.toolTipText")); // NOI18N
 
         binding = Bindings.createAutoBinding(UpdateStrategy.READ_WRITE, config, ELProperty.create("${announceUnstableUpdates}"), unstableUpdatesCheckBox, BeanProperty.create("selected"));
         bindingGroup.addBinding(binding);
 
-        Mnemonics.setLocalizedText(debugCheckBox, l10n.getString("ConfigFrame.debugCheckBox.text"));
+        Mnemonics.setLocalizedText(debugCheckBox, l10n.getString("ConfigFrame.debugCheckBox.text")); // NOI18N
         debugCheckBox.setToolTipText(l10n.getString("ConfigFrame.debugCheckBox.toolTipText")); // NOI18N
 
         binding = Bindings.createAutoBinding(UpdateStrategy.READ_WRITE, config, ELProperty.create("${debugMode}"), debugCheckBox, BeanProperty.create("selected"));
@@ -521,7 +605,7 @@ public class ConfigFrame extends javax.swing.JFrame {
             }
         });
 
-        Mnemonics.setLocalizedText(logLocationLabel, l10n.getString("ConfigFrame.logLocationLabel.text"));
+        Mnemonics.setLocalizedText(logLocationLabel, l10n.getString("ConfigFrame.logLocationLabel.text")); // NOI18N
         logLocationLabel.setText(MessageFormat.format(logLocationLabel.getText(),
             Context.persistenceManager.getLogFile()));
 
@@ -591,19 +675,19 @@ public class ConfigFrame extends javax.swing.JFrame {
         Mnemonics.setLocalizedText(themeLabel, l10n.getString("ConfigFrame.themeLabel.text")); // NOI18N
     themeLabel.setToolTipText(themeComboBox.getToolTipText());
 
-        Mnemonics.setLocalizedText(windowCenteredCheckBox, l10n.getString("ConfigFrame.windowCenteredCheckBox.text"));
+        Mnemonics.setLocalizedText(windowCenteredCheckBox, l10n.getString("ConfigFrame.windowCenteredCheckBox.text")); // NOI18N
     windowCenteredCheckBox.setToolTipText(l10n.getString("ConfigFrame.windowCenteredCheckBox.toolTipText")); // NOI18N
 
     binding = Bindings.createAutoBinding(UpdateStrategy.READ_WRITE, config, ELProperty.create("${startCentered}"), windowCenteredCheckBox, BeanProperty.create("selected"));
     bindingGroup.addBinding(binding);
 
-        Mnemonics.setLocalizedText(toolbarVisibleCheckBox, l10n.getString("ConfigFrame.toolbarVisibleCheckBox.text"));
+        Mnemonics.setLocalizedText(toolbarVisibleCheckBox, l10n.getString("ConfigFrame.toolbarVisibleCheckBox.text")); // NOI18N
     toolbarVisibleCheckBox.setToolTipText(l10n.getString("ConfigFrame.toolbarVisibleCheckBox.toolTipText")); // NOI18N
 
     binding = Bindings.createAutoBinding(UpdateStrategy.READ_WRITE, config, ELProperty.create("${toolbarVisible}"), toolbarVisibleCheckBox, BeanProperty.create("selected"));
     bindingGroup.addBinding(binding);
 
-        Mnemonics.setLocalizedText(notificationAreaCheckBox, l10n.getString("ConfigFrame.notificationAreaCheckBox.text"));
+        Mnemonics.setLocalizedText(notificationAreaCheckBox, l10n.getString("ConfigFrame.notificationAreaCheckBox.text")); // NOI18N
     notificationAreaCheckBox.setToolTipText(l10n.getString("ConfigFrame.notificationAreaCheckBox.toolTipText")); // NOI18N
     notificationAreaCheckBox.setEnabled(NotificationIcon.isSupported());
 
@@ -616,13 +700,13 @@ public class ConfigFrame extends javax.swing.JFrame {
         }
     });
 
-        Mnemonics.setLocalizedText(tipsCheckBox, l10n.getString("ConfigFrame.tipsCheckBox.text"));
+        Mnemonics.setLocalizedText(tipsCheckBox, l10n.getString("ConfigFrame.tipsCheckBox.text")); // NOI18N
     tipsCheckBox.setToolTipText(l10n.getString("ConfigFrame.tipsCheckBox.toolTipText")); // NOI18N
 
     binding = Bindings.createAutoBinding(UpdateStrategy.READ_WRITE, config, ELProperty.create("${showTips}"), tipsCheckBox, BeanProperty.create("selected"));
     bindingGroup.addBinding(binding);
 
-        Mnemonics.setLocalizedText(startMinimizedCheckBox, l10n.getString("ConfigFrame.startMinimizedCheckBox.text"));
+        Mnemonics.setLocalizedText(startMinimizedCheckBox, l10n.getString("ConfigFrame.startMinimizedCheckBox.text")); // NOI18N
     startMinimizedCheckBox.setToolTipText(l10n.getString("ConfigFrame.startMinimizedCheckBox.toolTipText")); // NOI18N
 
     binding = Bindings.createAutoBinding(UpdateStrategy.READ_WRITE, config, ELProperty.create("${startMinimized}"), startMinimizedCheckBox, BeanProperty.create("selected"));
@@ -630,7 +714,7 @@ public class ConfigFrame extends javax.swing.JFrame {
     binding = Bindings.createAutoBinding(UpdateStrategy.READ_WRITE, notificationAreaCheckBox, ELProperty.create("${selected && enabled}"), startMinimizedCheckBox, BeanProperty.create("enabled"));
     bindingGroup.addBinding(binding);
 
-        Mnemonics.setLocalizedText(advancedControlsCheckBox, l10n.getString("ConfigFrame.advancedControlsCheckBox.text"));
+        Mnemonics.setLocalizedText(advancedControlsCheckBox, l10n.getString("ConfigFrame.advancedControlsCheckBox.text")); // NOI18N
     advancedControlsCheckBox.setToolTipText(l10n.getString("ConfigFrame.advancedControlsCheckBox.toolTipText")); // NOI18N
 
     binding = Bindings.createAutoBinding(UpdateStrategy.READ_WRITE, config, ELProperty.create("${showAdvancedControls}"), advancedControlsCheckBox, BeanProperty.create("selected"));
@@ -710,7 +794,7 @@ public class ConfigFrame extends javax.swing.JFrame {
     gatewayTable.getTableHeader().setReorderingAllowed(false);
     jScrollPane1.setViewportView(gatewayTable);
 
-    Mnemonics.setLocalizedText(gwTipLabel,l10n.getString("ConfigFrame.gwTipLabel.text"));
+        Mnemonics.setLocalizedText(gwTipLabel, l10n.getString("ConfigFrame.gwTipLabel.text")); // NOI18N
 
     gwDetailsPanel.setBorder(BorderFactory.createTitledBorder("<<Gateway name>>"));
     gwDetailsPanel.setVisible(false);
@@ -729,7 +813,7 @@ public class ConfigFrame extends javax.swing.JFrame {
     loginField.setColumns(12);
     loginField.setToolTipText(l10n.getString("ConfigFrame.loginField.toolTipText")); // NOI18N
 
-        Mnemonics.setLocalizedText(showPasswordCheckBox, l10n.getString("ConfigFrame.showPasswordCheckBox.text"));
+        Mnemonics.setLocalizedText(showPasswordCheckBox, l10n.getString("ConfigFrame.showPasswordCheckBox.text")); // NOI18N
     showPasswordCheckBox.setToolTipText(l10n.getString("ConfigFrame.showPasswordCheckBox.toolTipText")); // NOI18N
 
     binding = Bindings.createAutoBinding(UpdateStrategy.READ, passwordField, ELProperty.create("${enabled}"), showPasswordCheckBox, BeanProperty.create("enabled"));
@@ -772,7 +856,21 @@ public class ConfigFrame extends javax.swing.JFrame {
 
     senderNameTextField.setColumns(12);
     senderNameTextField.setToolTipText(l10n.getString("ConfigFrame.senderNameTextField.toolTipText")); // NOI18N
-    Mnemonics.setLocalizedText(demandDeliveryReportCheckBox, l10n.getString("ConfigFrame.demandDeliveryReportCheckBox.text"));
+    senderNameTextField.addFocusListener(new FocusAdapter() {
+        public void focusGained(FocusEvent evt) {
+            senderNameTextFieldFocusGained(evt);
+        }
+        public void focusLost(FocusEvent evt) {
+            senderNameTextFieldFocusLost(evt);
+        }
+    });
+    senderNameTextField.addKeyListener(new KeyAdapter() {
+        public void keyTyped(KeyEvent evt) {
+            senderNameTextFieldKeyTyped(evt);
+        }
+    });
+
+        Mnemonics.setLocalizedText(demandDeliveryReportCheckBox, l10n.getString("ConfigFrame.demandDeliveryReportCheckBox.text")); // NOI18N
     demandDeliveryReportCheckBox.setToolTipText(l10n.getString("ConfigFrame.demandDeliveryReportCheckBox.toolTipText")); // NOI18N
     demandDeliveryReportCheckBox.addActionListener(new ActionListener() {
         public void actionPerformed(ActionEvent evt) {
@@ -805,17 +903,17 @@ public class ConfigFrame extends javax.swing.JFrame {
                 .addGroup(gwDetailsPanelLayout.createSequentialGroup()
                     .addComponent(jLabel11)
                     .addPreferredGap(ComponentPlacement.RELATED)
-                    .addComponent(loginField, GroupLayout.DEFAULT_SIZE, 119, Short.MAX_VALUE))
+                    .addComponent(loginField, GroupLayout.PREFERRED_SIZE, 1, Short.MAX_VALUE))
                 .addGroup(gwDetailsPanelLayout.createSequentialGroup()
                     .addComponent(jLabel12)
                     .addPreferredGap(ComponentPlacement.RELATED)
                     .addGroup(gwDetailsPanelLayout.createParallelGroup(Alignment.LEADING)
                         .addComponent(showPasswordCheckBox)
-                        .addComponent(passwordField, GroupLayout.DEFAULT_SIZE, 119, Short.MAX_VALUE)))
+                        .addComponent(passwordField, GroupLayout.PREFERRED_SIZE, 1, Short.MAX_VALUE)))
                 .addGroup(Alignment.TRAILING, gwDetailsPanelLayout.createSequentialGroup()
                     .addComponent(jLabel2)
                     .addPreferredGap(ComponentPlacement.RELATED)
-                    .addComponent(signatureComboBox, GroupLayout.PREFERRED_SIZE, 72, Short.MAX_VALUE)
+                    .addComponent(signatureComboBox, GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE)
                     .addPreferredGap(ComponentPlacement.RELATED)
                     .addComponent(sigDelButton))
                 .addGroup(gwDetailsPanelLayout.createSequentialGroup()
@@ -824,13 +922,13 @@ public class ConfigFrame extends javax.swing.JFrame {
                         .addGroup(gwDetailsPanelLayout.createSequentialGroup()
                             .addComponent(senderNumberLabel)
                             .addPreferredGap(ComponentPlacement.RELATED)
-                            .addComponent(senderNumberTextField, GroupLayout.DEFAULT_SIZE, 106, Short.MAX_VALUE)
+                            .addComponent(senderNumberTextField, GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE)
                             .addPreferredGap(ComponentPlacement.RELATED)
                             .addComponent(senderNumberWarnLabel))
                         .addGroup(gwDetailsPanelLayout.createSequentialGroup()
                             .addComponent(senderNameLabel)
                             .addPreferredGap(ComponentPlacement.RELATED)
-                            .addComponent(senderNameTextField, GroupLayout.DEFAULT_SIZE, 128, Short.MAX_VALUE))))
+                            .addComponent(senderNameTextField, GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE))))
                 .addComponent(demandDeliveryReportCheckBox))
             .addContainerGap())
     );
@@ -895,7 +993,7 @@ public class ConfigFrame extends javax.swing.JFrame {
                     .addComponent(gwDetailsPanel, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
                     .addPreferredGap(ComponentPlacement.RELATED, 93, Short.MAX_VALUE)
                     .addComponent(clearKeyringButton))
-                .addComponent(jScrollPane1, GroupLayout.DEFAULT_SIZE, 335, Short.MAX_VALUE))
+                .addComponent(jScrollPane1, GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE))
             .addPreferredGap(ComponentPlacement.RELATED)
             .addComponent(gwTipLabel, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
             .addContainerGap())
@@ -1007,7 +1105,7 @@ public class ConfigFrame extends javax.swing.JFrame {
         }
     });
 
-        Mnemonics.setLocalizedText(sameProxyCheckBox, l10n.getString("ConfigFrame.sameProxyCheckBox.text"));
+        Mnemonics.setLocalizedText(sameProxyCheckBox, l10n.getString("ConfigFrame.sameProxyCheckBox.text")); // NOI18N
     sameProxyCheckBox.setToolTipText(l10n.getString("ConfigFrame.sameProxyCheckBox.toolTipText")); // NOI18N
 
     binding = Bindings.createAutoBinding(UpdateStrategy.READ_WRITE, config, ELProperty.create("${sameProxy}"), sameProxyCheckBox, BeanProperty.create("selected"));
@@ -1060,7 +1158,8 @@ public class ConfigFrame extends javax.swing.JFrame {
     jLabel16.setLabelFor(socksProxyTextField);
         Mnemonics.setLocalizedText(jLabel16, l10n.getString("ConfigFrame.jLabel16.text")); // NOI18N
     jLabel16.setToolTipText(socksProxyTextField.getToolTipText());
-        Mnemonics.setLocalizedText(jLabel17, l10n.getString("ConfigFrame.jLabel17.text"));
+
+        Mnemonics.setLocalizedText(jLabel17, l10n.getString("ConfigFrame.jLabel17.text")); // NOI18N
 
         GroupLayout connectionPanelLayout = new GroupLayout(connectionPanel);
     connectionPanel.setLayout(connectionPanelLayout);
@@ -1154,19 +1253,19 @@ public class ConfigFrame extends javax.swing.JFrame {
         .addGroup(layout.createSequentialGroup()
             .addContainerGap()
             .addGroup(layout.createParallelGroup(Alignment.LEADING)
-                .addComponent(tabbedPane, Alignment.TRAILING, GroupLayout.DEFAULT_SIZE, 724, Short.MAX_VALUE)
+                .addComponent(tabbedPane, Alignment.TRAILING)
                 .addGroup(layout.createSequentialGroup()
                     .addComponent(advancedCheckBox)
-                    .addPreferredGap(ComponentPlacement.RELATED, 498, Short.MAX_VALUE)
+                    .addPreferredGap(ComponentPlacement.RELATED, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(closeButton))
-                .addComponent(restartLabel, GroupLayout.DEFAULT_SIZE, 724, Short.MAX_VALUE))
+                .addComponent(restartLabel, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
             .addContainerGap())
     );
     layout.setVerticalGroup(
         layout.createParallelGroup(Alignment.LEADING)
         .addGroup(Alignment.TRAILING, layout.createSequentialGroup()
             .addContainerGap()
-            .addComponent(tabbedPane, GroupLayout.DEFAULT_SIZE, 415, Short.MAX_VALUE)
+            .addComponent(tabbedPane)
             .addPreferredGap(ComponentPlacement.RELATED)
             .addComponent(restartLabel, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
             .addPreferredGap(ComponentPlacement.RELATED)
@@ -1336,9 +1435,9 @@ private void formWindowClosing(WindowEvent evt) {//GEN-FIRST:event_formWindowClo
     }
 }//GEN-LAST:event_formWindowClosing
 
-private void formWindowGainedFocus(WindowEvent evt) {//GEN-FIRST:event_formWindowGainedFocus
+private void formComponentShown(ComponentEvent evt) {//GEN-FIRST:event_formComponentShown
     closeButton.requestFocusInWindow();
-}//GEN-LAST:event_formWindowGainedFocus
+}//GEN-LAST:event_formComponentShown
 
 private void signatureComboBoxActionPerformed(ActionEvent evt) {//GEN-FIRST:event_signatureComboBoxActionPerformed
     boolean oldInit = fullyInicialized;
@@ -1421,6 +1520,37 @@ private void demandDeliveryReportCheckBoxActionPerformed(ActionEvent evt) {//GEN
         }
     }//GEN-LAST:event_masterPasswordActionPerformed
 
+    private void senderNameTextFieldFocusGained(FocusEvent evt) {//GEN-FIRST:event_senderNameTextFieldFocusGained
+        updateSenderNamePopup(PopupUpdateType.SHOW);
+    }//GEN-LAST:event_senderNameTextFieldFocusGained
+
+    private void senderNameTextFieldFocusLost(FocusEvent evt) {//GEN-FIRST:event_senderNameTextFieldFocusLost
+        updateSenderNamePopup(PopupUpdateType.HIDE);
+    }//GEN-LAST:event_senderNameTextFieldFocusLost
+
+    /** Adds a colon to the end of senderNameTextField
+     * if the first characted has just been typed. */
+    private void senderNameTextFieldKeyTyped(KeyEvent evt) {//GEN-FIRST:event_senderNameTextFieldKeyTyped
+        char c = evt.getKeyChar();
+        if (c < ' ' || c == KeyEvent.CHAR_UNDEFINED) {
+            return;
+        }
+        if (senderNameTextField.getText().length() != 0) {
+            return;
+        }
+        SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                if (senderNameTextField.getText().length() == 0) {
+                    return;
+                }
+                String typed = senderNameTextField.getText();
+                senderNameTextField.setText(typed + ":");
+                senderNameTextField.setCaretPosition(typed.length());
+            }
+        });
+    }//GEN-LAST:event_senderNameTextFieldKeyTyped
+    
     private class LaFComboRenderer extends DefaultListCellRenderer {
         private final ListCellRenderer lafRenderer = new JList().getCellRenderer();
         private final String LAF_SYSTEM = l10n.getString("ConfigFrame.system_look");
@@ -1773,5 +1903,5 @@ private void demandDeliveryReportCheckBoxActionPerformed(ActionEvent evt) {//GEN
     private JCheckBox windowCenteredCheckBox;
     private BindingGroup bindingGroup;
     // End of variables declaration//GEN-END:variables
-    
+
 }

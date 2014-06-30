@@ -20,6 +20,7 @@ import esmska.utils.L10N;
 import esmska.utils.MiscUtils;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Dimension;
 import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -105,6 +106,7 @@ public class SMSPanel extends javax.swing.JPanel {
     
     private UndoAction undoAction = new UndoAction();
     private RedoAction redoAction = new RedoAction();
+    private Action showAddContactDialogAction = new ShowAddContactDialogAction();
     private CompressAction compressAction = null;
     private SendAction sendAction = new SendAction();
     private SMSTextPaneListener smsTextPaneListener = new SMSTextPaneListener();
@@ -123,13 +125,13 @@ public class SMSPanel extends javax.swing.JPanel {
         actionSupport.removeActionListener(actionListener);
     }
     // </editor-fold>
-    
+
     /** Creates new form SMSPanel */
     public SMSPanel() {
         initComponents();
         compressAction = new CompressAction();
         recipientField = (RecipientTextField) recipientTextField;
-        
+
         //if not Substance LaF, add clipboard popup menu to text components
         if (!config.getLookAndFeel().equals(ThemeManager.LAF.SUBSTANCE)) {
             ClipboardPopupMenu.register(smsTextPane);
@@ -144,7 +146,7 @@ public class SMSPanel extends javax.swing.JPanel {
                 SMSPanel.this.revalidate();
             }
         });
-        
+
         // allow to send messages once the program is fully loaded
         Context.addPropertyChangeListener(new PropertyChangeListener() {
             @Override
@@ -156,7 +158,7 @@ public class SMSPanel extends javax.swing.JPanel {
             }
         });
     }
-    
+
     /** validates sms form and returns status */
     private boolean validateForm(boolean transferFocus) {
         if (StringUtils.isEmpty(envelope.getText())) {
@@ -187,7 +189,7 @@ public class SMSPanel extends javax.swing.JPanel {
         }
         return true;
     }
-    
+
     /** Find contact according to filled name/number and gateway
      * @param onlyFullMatch whether to look only for full match (name/number and gateway)
      *  or even partial match (name/number only)
@@ -197,14 +199,14 @@ public class SMSPanel extends javax.swing.JPanel {
         String number = recipientField.getNumber();
         String id = recipientTextField.getText(); //name or number
         String gatewayName = gatewayComboBox.getSelectedGatewayName();
-        
+
         if (StringUtils.isEmpty(id)) {
             return null;
         }
-        
+
         Contact contact = null; //match on id
         Contact fullContact = null; //match on id and gateway
-        
+
         //search in contact numbers
         if (number != null) {
             for (Contact c : contacts) {
@@ -232,10 +234,10 @@ public class SMSPanel extends javax.swing.JPanel {
                 }
             }
         }
-        
+
         return (fullContact != null ? fullContact : contact);
     }
-    
+
     /** Request a contact to be selected in contact list. Use null for clearing
      * the selection.
      */
@@ -246,28 +248,30 @@ public class SMSPanel extends javax.swing.JPanel {
             Context.mainFrame.getContactPanel().clearSelection();
         }
     }
-    
+
     /** set selected contacts in contact list or contact to display */
     public void setContacts(Collection<Contact> contacts) {
         Validate.notNull(contacts);
 
         disableContactListeners = true;
+        stripSignature();
         int count = contacts.size();
-        
+
         if (count == 1) {
             Contact c = contacts.iterator().next();
             recipientField.setContact(c);
             gatewayComboBox.setSelectedGateway(c.getGateway());
         }
-        
+
         boolean multiSendMode = (count > 1);
         if (multiSendMode) {
             recipientTextField.setText(l10n.getString("Multiple_sending"));
             gatewayComboBox.setSelectedGateway(null);
         }
+        
         recipientTextField.setEnabled(! multiSendMode);
         gatewayComboBox.setEnabled(! multiSendMode);
-        
+
         //update envelope
         Set<Contact> set = new HashSet<Contact>();
         set.addAll(contacts);
@@ -278,16 +282,18 @@ public class SMSPanel extends javax.swing.JPanel {
                     gatewayComboBox.getSelectedGatewayName()));
         }
         envelope.setContacts(set);
-        
+
         // update components
+        updateSignature();
         sendAction.updateStatus();
         smsTextPaneDocumentFilter.requestUpdate();
         updateNumberInfoLabel();
         updateSuggestGatewayButton();
+        updateAddContactButton();
         revalidate();
         disableContactListeners = false;
     }
-    
+
     /** set sms to display and edit */
     public void setSMS(final SMS sms) {
         recipientField.setNumber(sms.getNumber());
@@ -303,7 +309,7 @@ public class SMSPanel extends javax.swing.JPanel {
             }
         });
     }
-    
+
     /** get currently written sms text
      * @return currently written sms text or empty string; never null
      */
@@ -311,80 +317,93 @@ public class SMSPanel extends javax.swing.JPanel {
         String text = smsTextPane.getText();
         return text != null ? text : "";
     }
-    
+
     /** get undo action used in sms text pane */
     public Action getUndoAction() {
         return undoAction;
     }
-    
+
     /** get redo action used in sms text pane */
     public Action getRedoAction() {
         return redoAction;
     }
-    
+
     /** get compress action used for compressing sms text */
     public Action getCompressAction() {
         return compressAction;
     }
-    
+
     /** get send action used for sending the sms */
     public Action getSendAction() {
         return sendAction;
     }
     
+    /* Remove current sender name from message text */
+    private void stripSignature() {
+        String signatureName = envelope.getSenderName();
+        if (StringUtils.isEmpty(signatureName)) {
+            return;
+        }
+        String text = smsTextPane.getText();
+        if (text.startsWith(signatureName)) {
+            smsTextPane.setText(StringUtils.removeStart(text, signatureName));
+        }
+    }
+    
+    /* Add sender name to the message text if appropriate */
+    private void updateSignature() {
+        String signatureName = envelope.getSenderName();
+        if (StringUtils.isEmpty(signatureName)) {
+            return;
+        }
+        String text = smsTextPane.getText();
+        if (text.startsWith(signatureName)) {
+            return;
+        }
+        smsTextPane.setText(signatureName + text);
+    }
+    
     /** updates values on progress bars according to currently written message chars*/
     private void updateProgressBars() {
-        int currentLength = smsTextPane.getText().length();
+        int currentLength = envelope.getText().length();
         int smsLength = envelope.getSMSLength();
+        int maxTextLength = envelope.getMaxTextLength();
+
+        //set limits
+        fullProgressBar.setMaximum(maxTextLength);
         
-        //set maximums
-        singleProgressBar.setMaximum(Math.max(smsLength, 0));
-        fullProgressBar.setMaximum(envelope.getMaxTextLength());
-        
-        //if we are at the end of the whole message, the current message length
-        //can be lesser than usual
-        if (smsLength > 0) {
-            int remainder = envelope.getMaxTextLength() % smsLength;
-            if (envelope.getMaxTextLength() - currentLength < remainder) {
-                //we have crossed the remainder border, let's update maximum on progress bar
-                singleProgressBar.setMaximum(remainder);
-            }
-        }
-        
+        int min = envelope.getPenultimateIndexOfCut(envelope.getText(), smsLength);
+        int max = min + smsLength;
+        max = Math.min(max, maxTextLength);
+
+        singleProgressBar.setMinimum(min);
+        singleProgressBar.setMaximum(max);
+
         //set values
         fullProgressBar.setValue(currentLength);
-        singleProgressBar.setValue(smsLength > 0 ? currentLength % smsLength : 0);
-        //on the border counts we want progress bar full instead of empty
-        if (singleProgressBar.getValue() == 0 && currentLength > 0) {
-            singleProgressBar.setValue(singleProgressBar.getMaximum());
-        }
-        
+        singleProgressBar.setValue(currentLength);
+
         //set tooltips
-        int current = singleProgressBar.getValue();
-        int max = singleProgressBar.getMaximum();
-        boolean infinite = (max == Integer.MAX_VALUE);
-        if (infinite) {
+        updateProgressBarToolTip(fullProgressBar, "SMSPanel.fullProgressBar");
+        updateProgressBarToolTip(singleProgressBar, "SMSPanel.singleProgressBar");
+    }
+
+    /** Updates the tooltip for the progress bar according to its current value and limits
+     * @param bar The progress bar
+     * @param resourceId The localization string name
+     */
+    private void updateProgressBarToolTip(JProgressBar bar, String resourceId)
+    {
+        int used = bar.getValue() - bar.getMinimum();
+        if (bar.getMaximum() == Integer.MAX_VALUE) {
             //don't show really big numbers when there is no limit on characters
-            singleProgressBar.setToolTipText(MessageFormat.format(
-                    l10n.getString("SMSPanel.singleProgressBar"),
-                    current, "∞", "∞"));
+            bar.setToolTipText(MessageFormat.format(l10n.getString(resourceId),
+                    used, "∞", "∞"));
         } else {
-            singleProgressBar.setToolTipText(MessageFormat.format(
-                    l10n.getString("SMSPanel.singleProgressBar"),
-                    current, max, (max - current)));
-        }
-        current = fullProgressBar.getValue();
-        max = fullProgressBar.getMaximum();
-        infinite = (max == Integer.MAX_VALUE);
-        if (infinite) {
-            //don't show really big numbers when there is no limit on characters
-            fullProgressBar.setToolTipText(MessageFormat.format(
-                    l10n.getString("SMSPanel.fullProgressBar"),
-                    current, "∞", "∞"));
-        } else {
-            fullProgressBar.setToolTipText(MessageFormat.format(
-                    l10n.getString("SMSPanel.fullProgressBar"),
-                    current, max, (max - current)));
+            int capacity = bar.getMaximum() - bar.getMinimum();
+            int remaining = bar.getMaximum() - bar.getValue();
+            bar.setToolTipText(MessageFormat.format(l10n.getString(resourceId),
+                    used, capacity, remaining));
         }
     }
 
@@ -438,12 +457,22 @@ public class SMSPanel extends javax.swing.JPanel {
         }
     }
 
+    /** Show or hide addContactButton, depending whether recipientTextField contains an unknown number */
+    private void updateAddContactButton() {
+        RecipientTextField field = (RecipientTextField) recipientTextField;
+        if (field.getContact() == null && field.getNumber() != null) {
+             addContactButton.setVisible(true);
+        } else {
+             addContactButton.setVisible(false);
+        }
+    }
+
     /** Show or hide suggest button */
     private void updateSuggestGatewayButton() {
         RecipientTextField field = (RecipientTextField) recipientTextField;
         ArrayList<Gateway> gws = new ArrayList<Gateway>();
         if (field.getContact() == null && field.getNumber() != null) {
-             gws = Gateways.getInstance().suggestGateway(field.getNumber()).get1();
+            gws = Gateways.getInstance().suggestGateway(field.getNumber()).get1();
         }
         boolean visible = false;
         if (gws.size() > 1) {
@@ -454,7 +483,7 @@ public class SMSPanel extends javax.swing.JPanel {
         }
         suggestGatewayButton.setVisible(visible);
     }
-    
+
     /** This method is called from within the constructor to
      * initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is
@@ -480,8 +509,10 @@ public class SMSPanel extends javax.swing.JPanel {
         countryInfoLabel = new InfoLabel();
         suggestGatewayButton = new JButton();
         jLabel1 = new JLabel();
+        addContactButton = new JButton();
 
         setBorder(BorderFactory.createTitledBorder(l10n.getString("SMSPanel.border.title"))); // NOI18N
+        setMinimumSize(new Dimension(5, 5));
         addFocusListener(new FocusAdapter() {
             public void focusGained(FocusEvent evt) {
                 formFocusGained(evt);
@@ -510,6 +541,7 @@ public class SMSPanel extends javax.swing.JPanel {
                 smsTextUndoManager.addEdit(e.getEdit());
             }
         });
+
         int menuMask = Toolkit.getDefaultToolkit().getMenuShortcutKeyMask();
         String command = "undo";
         smsTextPane.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_Z, menuMask), command);
@@ -527,7 +559,7 @@ public class SMSPanel extends javax.swing.JPanel {
     jScrollPane1.setViewportView(smsTextPane);
 
     textLabel.setLabelFor(smsTextPane);
-    Mnemonics.setLocalizedText(textLabel,l10n.getString("SMSPanel.textLabel.text")); // NOI18N
+        Mnemonics.setLocalizedText(textLabel, l10n.getString("SMSPanel.textLabel.text")); // NOI18N
     textLabel.setToolTipText(l10n.getString("SMSPanel.textLabel.toolTipText")); // NOI18N
 
     sendButton.setAction(sendAction);
@@ -550,8 +582,8 @@ public class SMSPanel extends javax.swing.JPanel {
             infoPanelComponentResized(evt);
         }
     });
-    Mnemonics.setLocalizedText(credentialsInfoLabel,l10n.getString(
-        "SMSPanel.credentialsInfoLabel.text"));
+
+        Mnemonics.setLocalizedText(credentialsInfoLabel, l10n.getString("SMSPanel.credentialsInfoLabel.text")); // NOI18N
     credentialsInfoLabel.setText(MessageFormat.format(
         l10n.getString("SMSPanel.credentialsInfoLabel.text"), Links.CONFIG_GATEWAYS));
 credentialsInfoLabel.setVisible(false);
@@ -566,9 +598,9 @@ countryInfoLabel.setVisible(false);
 infoPanel.setLayout(infoPanelLayout);
 infoPanelLayout.setHorizontalGroup(
     infoPanelLayout.createParallelGroup(Alignment.LEADING)
-    .addComponent(credentialsInfoLabel, GroupLayout.DEFAULT_SIZE, 328, Short.MAX_VALUE)
-    .addComponent(numberInfoLabel, GroupLayout.DEFAULT_SIZE, 328, Short.MAX_VALUE)
-    .addComponent(countryInfoLabel, GroupLayout.DEFAULT_SIZE, 328, Short.MAX_VALUE)
+    .addComponent(credentialsInfoLabel, GroupLayout.DEFAULT_SIZE, 368, Short.MAX_VALUE)
+    .addComponent(numberInfoLabel)
+    .addComponent(countryInfoLabel, GroupLayout.DEFAULT_SIZE, 368, Short.MAX_VALUE)
     );
     infoPanelLayout.setVerticalGroup(
         infoPanelLayout.createParallelGroup(Alignment.LEADING)
@@ -585,6 +617,11 @@ infoPanelLayout.setHorizontalGroup(
     suggestGatewayButton.setText(null);
     suggestGatewayButton.putClientProperty(SubstanceLookAndFeel.FLAT_PROPERTY, Boolean.TRUE);
 
+    addContactButton.setAction(showAddContactDialogAction);
+    addContactButton.setIcon(new ImageIcon(getClass().getResource("/esmska/resources/add-16.png"))); // NOI18N
+    addContactButton.setText(null);
+    addContactButton.putClientProperty(SubstanceLookAndFeel.FLAT_PROPERTY, Boolean.TRUE);
+
         GroupLayout layout = new GroupLayout(this);
     this.setLayout(layout);
     layout.setHorizontalGroup(
@@ -597,11 +634,13 @@ infoPanelLayout.setHorizontalGroup(
                         .addGroup(Alignment.TRAILING, layout.createSequentialGroup()
                             .addComponent(recipientLabel)
                             .addPreferredGap(ComponentPlacement.RELATED)
-                            .addComponent(recipientTextField, GroupLayout.DEFAULT_SIZE, 310, Short.MAX_VALUE))
+                            .addComponent(recipientTextField, GroupLayout.DEFAULT_SIZE, 325, Short.MAX_VALUE)
+                            .addPreferredGap(ComponentPlacement.RELATED)
+                            .addComponent(addContactButton))
                         .addGroup(layout.createSequentialGroup()
                             .addComponent(gatewayLabel)
                             .addPreferredGap(ComponentPlacement.RELATED)
-                            .addComponent(gatewayComboBox, GroupLayout.DEFAULT_SIZE, 276, Short.MAX_VALUE)
+                            .addComponent(gatewayComboBox, GroupLayout.DEFAULT_SIZE, 325, Short.MAX_VALUE)
                             .addPreferredGap(ComponentPlacement.RELATED)
                             .addComponent(suggestGatewayButton)
                             .addGap(0, 0, 0)
@@ -614,14 +653,14 @@ infoPanelLayout.setHorizontalGroup(
                             .addPreferredGap(ComponentPlacement.RELATED)
                             .addGroup(layout.createParallelGroup(Alignment.TRAILING)
                                 .addGroup(layout.createSequentialGroup()
-                                    .addComponent(smsCounterLabel, GroupLayout.DEFAULT_SIZE, 286, Short.MAX_VALUE)
+                                    .addComponent(smsCounterLabel, GroupLayout.DEFAULT_SIZE, 341, Short.MAX_VALUE)
                                     .addPreferredGap(ComponentPlacement.RELATED)
                                     .addComponent(sendButton))
-                                .addComponent(jScrollPane1, GroupLayout.DEFAULT_SIZE, 310, Short.MAX_VALUE)))))
+                                .addComponent(jScrollPane1, GroupLayout.DEFAULT_SIZE, 378, Short.MAX_VALUE)))))
                 .addGroup(Alignment.TRAILING, layout.createSequentialGroup()
                     .addGap(74, 74, 74)
                     .addComponent(infoPanel, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
-            .addContainerGap())
+            .addGap(10, 10, 10))
     );
 
     layout.linkSize(SwingConstants.HORIZONTAL, new Component[] {fullProgressBar, singleProgressBar});
@@ -633,7 +672,8 @@ infoPanelLayout.setHorizontalGroup(
         .addGroup(layout.createSequentialGroup()
             .addGroup(layout.createParallelGroup(Alignment.BASELINE)
                 .addComponent(recipientLabel)
-                .addComponent(recipientTextField, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE))
+                .addComponent(recipientTextField, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
+                .addComponent(addContactButton))
             .addPreferredGap(ComponentPlacement.RELATED)
             .addGroup(layout.createParallelGroup(Alignment.LEADING)
                 .addGroup(layout.createParallelGroup(Alignment.TRAILING)
@@ -645,7 +685,7 @@ infoPanelLayout.setHorizontalGroup(
             .addPreferredGap(ComponentPlacement.RELATED)
             .addGroup(layout.createParallelGroup(Alignment.LEADING)
                 .addGroup(Alignment.TRAILING, layout.createSequentialGroup()
-                    .addComponent(jScrollPane1, GroupLayout.PREFERRED_SIZE, 24, Short.MAX_VALUE)
+                    .addComponent(jScrollPane1, GroupLayout.DEFAULT_SIZE, 65, Short.MAX_VALUE)
                     .addPreferredGap(ComponentPlacement.RELATED)
                     .addComponent(infoPanel, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
                     .addPreferredGap(ComponentPlacement.RELATED)
@@ -663,8 +703,12 @@ infoPanelLayout.setHorizontalGroup(
 
     layout.linkSize(SwingConstants.VERTICAL, new Component[] {fullProgressBar, singleProgressBar});
 
+    layout.linkSize(SwingConstants.VERTICAL, new Component[] {addContactButton, recipientTextField});
+
+    layout.linkSize(SwingConstants.VERTICAL, new Component[] {gatewayComboBox, suggestGatewayButton});
+
     }// </editor-fold>//GEN-END:initComponents
-    
+
     private void formFocusGained(FocusEvent evt) {//GEN-FIRST:event_formFocusGained
         smsTextPane.requestFocusInWindow();
     }//GEN-LAST:event_formFocusGained
@@ -681,7 +725,7 @@ infoPanelLayout.setHorizontalGroup(
             actionSupport.fireActionPerformed(ActionEventSupport.ACTION_NEED_RESIZE, null);
         }
     }//GEN-LAST:event_infoPanelComponentResized
-    
+
     /** Send sms to queue */
     private class SendAction extends AbstractAction {
         public SendAction() {
@@ -700,7 +744,7 @@ infoPanelLayout.setHorizontalGroup(
             }
             logger.fine("Sending new message to queue");
             Queue.getInstance().addAll(envelope.generate());
-            
+
             smsTextPane.setText(null);
             smsTextUndoManager.discardAllEdits();
             smsTextPane.requestFocusInWindow();
@@ -710,7 +754,7 @@ infoPanelLayout.setHorizontalGroup(
             this.setEnabled(validateForm(false) && Context.everythingLoaded());
         }
     }
-    
+
     /** undo in sms text pane */
     private class UndoAction extends AbstractAction {
         public UndoAction() {
@@ -733,7 +777,7 @@ infoPanelLayout.setHorizontalGroup(
             setEnabled(smsTextUndoManager.canUndo());
         }
     }
-    
+
     /** redo in sms text pane */
     private class RedoAction extends AbstractAction {
         public RedoAction() {
@@ -756,7 +800,7 @@ infoPanelLayout.setHorizontalGroup(
             setEnabled(smsTextUndoManager.canRedo());
         }
     }
-    
+
     /** compress current sms text by rewriting it to CamelCase */
     private class CompressAction extends AbstractAction {
         /** is message selected just partially or as a whole? */
@@ -826,6 +870,19 @@ infoPanelLayout.setHorizontalGroup(
             setEnabled(getText().length() > 0);
         }
     }
+    
+    /** Show a dialog to add a new contact with unknown number from recipientTextField */
+    private class ShowAddContactDialogAction extends AbstractAction {
+        private Contact skeleton;
+        public ShowAddContactDialogAction() {
+            this.putValue(SHORT_DESCRIPTION, l10n.getString("Add_contact"));
+        }
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            skeleton = new Contact(null, recipientTextField.getText(), null);
+            Context.mainFrame.getContactPanel().showAddContactDialog(skeleton);
+        }
+    }
 
     /** Another gateway selected */
     private class GatewayComboBoxActionListener implements ActionListener {
@@ -835,10 +892,27 @@ infoPanelLayout.setHorizontalGroup(
                 return;
             }
             
+            stripSignature();
+            
+            //select contact only if full match found
+            Contact contact = lookupContact(true);
+            if (contact != null) {
+                requestSelectContact(contact);
+            }
+
+            //update envelope
+            Set<Contact> set = new HashSet<Contact>();
+
+            Contact c = recipientField.getContact();
+            set.add(new Contact(c != null ? c.getName() : null,
+                    recipientField.getNumber(),
+                    gatewayComboBox.getSelectedGatewayName()));
+            envelope.setContacts(set);
+            
             //update text editor listeners
             DocumentEvent event = new DocumentEvent() {
                 @Override
-                public ElementChange getChange(Element elem) {
+                public DocumentEvent.ElementChange getChange(Element elem) {
                     return null;
                 }
                 @Override
@@ -854,59 +928,45 @@ infoPanelLayout.setHorizontalGroup(
                     return 0;
                 }
                 @Override
-                public EventType getType() {
-                    return EventType.INSERT;
+                public DocumentEvent.EventType getType() {
+                    return DocumentEvent.EventType.INSERT;
                 }
             };
             smsTextPaneListener.onUpdate(event);
-            
-            //select contact only if full match found
-            Contact contact = lookupContact(true);
-            if (contact != null) {
-                requestSelectContact(contact);
-            }
-            
-            //update envelope
-            Set<Contact> set = new HashSet<Contact>();
-            
-            Contact c = recipientField.getContact();
-            set.add(new Contact(c != null ? c.getName() : null,
-                    recipientField.getNumber(),
-                    gatewayComboBox.getSelectedGatewayName()));
-            envelope.setContacts(set);
-            
+
             //update components
+            updateSignature();
             smsTextPaneDocumentFilter.requestUpdate();
         }
     }
-    
+
     /** Listener for sms text pane */
     private class SMSTextPaneListener extends AbstractDocumentListener {
         /** count number of chars in sms and take action */
         private void countChars(DocumentEvent e) {
-            int chars = e.getDocument().getLength();
-            int smsCount = envelope.getSMSCount(chars);
-            if (smsCount < 0) {
-                //don't count messages
-                smsCounterLabel.setText(MessageFormat.format(l10n.getString("SMSPanel.smsCounterLabel.3"),
-                    chars, smsCount));
+            String msgText = envelope.getText();
+            if (envelope.getSMSLength() > 0) {
+                int smsCount = envelope.getSMSCount(msgText, envelope.getSMSLength()); //num of sms
+                smsCounterLabel.setText(MessageFormat.format(
+                        l10n.getString("SMSPanel.smsCounterLabel.1"),
+                        msgText.length(), smsCount));
             } else {
-                //count messags
-                smsCounterLabel.setText(MessageFormat.format(l10n.getString("SMSPanel.smsCounterLabel.1"),
-                    chars, smsCount));
+                smsCounterLabel.setText(MessageFormat.format(
+                        l10n.getString("SMSPanel.smsCounterLabel.1"),
+                        msgText.length(), "?"));
             }
-            if (chars > envelope.getMaxTextLength()) {
+            if (msgText.length() > envelope.getMaxTextLength()) {
                 //chars more than max
                 smsCounterLabel.setForeground(Color.RED);
                 smsCounterLabel.setText(MessageFormat.format(l10n.getString("SMSPanel.smsCounterLabel.2"),
-                        chars));
+                        msgText.length()));
             } else {
                 //chars ok
                 smsCounterLabel.setForeground(UIManager.getColor("Label.foreground"));
             }
         }
-        /** update form components */
-        private void updateUI(DocumentEvent e) {
+        /** update envelope with the new text */
+        private void updateEnvelope(DocumentEvent e) {
             try {
                 envelope.setText(e.getDocument().getText(0,e.getDocument().getLength()));
             } catch (BadLocationException ex) {
@@ -915,21 +975,22 @@ infoPanelLayout.setHorizontalGroup(
         }
         @Override
         public void onUpdate(DocumentEvent e) {
+            updateEnvelope(e);
             countChars(e);
-            updateUI(e);
         }
     }
-    
+
     /** Limit maximum sms length and color it */
     private class SMSTextPaneDocumentFilter extends DocumentFilter {
         private StyledDocument doc;
         private Style regular, highlight;
+        private Style lastStyle = regular;
         private Color alternateTextColor = Color.BLUE;
         //updating after each event is slow, therefore there is timer
-        private Timer timer = new Timer(100, new ActionListener() { 
+        private Timer timer = new Timer(100, new ActionListener() {
             @Override
-            public void actionPerformed(ActionEvent e) {           
-                colorDocument(0,doc.getLength());
+            public void actionPerformed(ActionEvent e) {
+                colorDocument();
                 updateUI();
             }
         });
@@ -942,7 +1003,7 @@ infoPanelLayout.setHorizontalGroup(
             regular = doc.addStyle("regular", def);
             highlight = doc.addStyle("highlight", def);
             lafChangedImpl();
-            
+
             // listen for changes in Look and Feel and change color of regular text
             UIManager.addPropertyChangeListener(new PropertyChangeListener() {
                 @Override
@@ -969,56 +1030,63 @@ infoPanelLayout.setHorizontalGroup(
             updateProgressBars();
         }
         /** color parts of sms */
-        private void colorDocument(int from, int length) {
-            int smsLength = envelope.getSMSLength();
-            while (from < length) {
-                int to = 0;
-                if (smsLength <= 0) {
-                    //unspecified sms length, color it all with same color
-                    to = length - 1;
-                } else {
-                    to = ((from / smsLength) + 1) * smsLength - 1;
-                }
-                to = to < length-1 ? to : length-1;
-                doc.setCharacterAttributes(from,to-from+1,getStyle(from),false);
-                from = to + 1;
+        private void colorDocument() {
+            String msgText = envelope.getText();
+            ArrayList<Integer> cutIndexes = envelope.getIndicesOfCuts(msgText, 
+                    envelope.getSMSLength());
+            
+            // if empty cutIndexes, the whole text should be black
+            if (cutIndexes.isEmpty()) {
+                cutIndexes.add(msgText.length());
+            }
+
+            int from = 0;
+            for (int i = 0; i < cutIndexes.size(); i++) {
+                int to = cutIndexes.get(i);
+                lastStyle = getStyle(i+1);
+                doc.setCharacterAttributes(from, to - from, lastStyle, false);
+                from = to;
             }
         }
         /** calculate which style is appropriate for given position */
-        private Style getStyle(int offset) {
-            if (envelope.getSMSLength() <= 0) {
-                //unspecified sms length
-                return regular;
-            }
-            if ((offset / envelope.getSMSLength()) % 2 == 0) {
-                //even sms
+        private Style getStyle(int smsNum) {
+            if ((smsNum % 2) == 1) {
+                //even message
                 return regular;
             } else {
+                //odd message
                 return highlight;
             }
         }
         @Override
-        public void replace(DocumentFilter.FilterBypass fb, int offset, int length, String text, AttributeSet attrs) throws BadLocationException {
+        public void replace(DocumentFilter.FilterBypass fb, int offset, int length, 
+                String text, AttributeSet attrs) throws BadLocationException {
             //if reached size limit, crop the text and show a warning
-            if ((fb.getDocument().getLength() + (text!=null?text.length():0) - length)
+            String currentText=fb.getDocument().getText(0, fb.getDocument().getLength());
+            if ((currentText.length() + (text != null ? text.length() : 0) - length)
                     > envelope.getMaxTextLength()) {
                 Context.mainFrame.getStatusPanel().setStatusMessage(
                         l10n.getString("SMSPanel.Text_is_too_long!"), null, null, false);
                 Context.mainFrame.getStatusPanel().hideStatusMessageAfter(5000);
-                int maxlength = envelope.getMaxTextLength() - fb.getDocument().getLength() + length;
+                int maxlength = envelope.getMaxTextLength(currentText)
+                        - currentText.length() + length;
                 maxlength = Math.max(maxlength, 0);
-                text = text.substring(0, maxlength);
+                if (text != null) {
+                    text = text.substring(0, maxlength);
+                }
             }
-            super.replace(fb, offset, length, text, getStyle(offset));
+            super.replace(fb, offset, length, text, lastStyle);
             timer.restart();
         }
         @Override
-        public void insertString(DocumentFilter.FilterBypass fb, int offset, String string, AttributeSet attr) throws BadLocationException {
+        public void insertString(DocumentFilter.FilterBypass fb, int offset, 
+                String string, AttributeSet attr) throws BadLocationException {
             super.insertString(fb, offset, string, attr);
             timer.restart();
         }
         @Override
-        public void remove(DocumentFilter.FilterBypass fb, int offset, int length) throws BadLocationException {
+        public void remove(DocumentFilter.FilterBypass fb, int offset, int length) 
+                throws BadLocationException {
             super.remove(fb, offset, length);
             timer.restart();
         }
@@ -1038,7 +1106,7 @@ infoPanelLayout.setHorizontalGroup(
             StyleConstants.setForeground(highlight, alternateTextColor);
         }
     }
-    
+
     /** Textfield for entering contact name or number */
     public class RecipientTextField extends JTextField {
         /** currently selected contact */
@@ -1046,7 +1114,7 @@ infoPanelLayout.setHorizontalGroup(
         private RecipientDocumentChange recipientDocumentChange = new RecipientDocumentChange();
         private String tooltip = l10n.getString("SMSPanel.recipientTextField.tooltip");
         private String tooltipTip = l10n.getString("SMSPanel.recipientTextField.tooltip.tip");
-        
+
         public RecipientTextField() {
 
             //set tooltip
@@ -1055,7 +1123,7 @@ infoPanelLayout.setHorizontalGroup(
             } else {
                 setToolTipText(tooltip + "</html>");
             }
-            
+
             //focus listener
             addFocusListener(new FocusListener() {
                 @Override
@@ -1069,7 +1137,7 @@ infoPanelLayout.setHorizontalGroup(
                     redrawContactName();
                 }
             });
-            
+
             //key listener
             addKeyListener(new KeyAdapter() {
                 @Override
@@ -1081,7 +1149,7 @@ infoPanelLayout.setHorizontalGroup(
                     }
                 }
             });
-            
+
             //document listener
             getDocument().addDocumentListener(new AbstractDocumentListener() {
                 @Override
@@ -1092,9 +1160,9 @@ infoPanelLayout.setHorizontalGroup(
                     SwingUtilities.invokeLater(recipientDocumentChange);
                 }
             });
-            
+
         }
-        
+
         /** Set contact to display. Will display contact name. Will not change
          displayed text if user is currently editing it. */
         public void setContact(Contact contact) {
@@ -1103,12 +1171,12 @@ infoPanelLayout.setHorizontalGroup(
                 super.setText(contact != null ? contact.getName() : null);
             }
         }
-        
+
         /** Get currently chosen contact. May be null. */
         public Contact getContact() {
             return contact;
         }
-        
+
         /** Return visible text. May be contact name or phone number (will include prefix).
          May be null. */
         @Override
@@ -1116,7 +1184,7 @@ infoPanelLayout.setHorizontalGroup(
             if (contact != null) {
                 return contact.getNumber();
             }
-            
+
             String text = super.getText();
             if (StringUtils.isNotEmpty(text) && !text.startsWith("+")) {
                 text = config.getCountryPrefix() + text;
@@ -1128,35 +1196,35 @@ infoPanelLayout.setHorizontalGroup(
                 return super.getText();
             }
         }
-        
+
         /** Set text to display. Will erase any internally remembered contact. */
         @Override
         public void setText(String text) {
             contact = null;
             super.setText(text);
         }
-        
+
         /** Rewrite phone number to contact name. Used after user finished editing
          the field. */
         public void redrawContactName() {
             if (contact == null) {
                 return;
             }
-            
+
             boolean old = disableContactListeners;
             disableContactListeners = true;
-           
+
             super.setText(contact.getName());
-           
+
             disableContactListeners = old;
         }
-        
+
         /** Get phone number of chosen contact or typed phone number. May be null. */
         public String getNumber() {
             if (contact != null) {
                 return contact.getNumber();
             }
-            
+
             String text = getText();
             if (Contact.isValidNumber(text)) {
                 return text;
@@ -1164,16 +1232,16 @@ infoPanelLayout.setHorizontalGroup(
                 return null;
             }
         }
-        
+
         /** Set phone number to display. Handles country prefix correctly. */
         public void setNumber(String number) {
             if (StringUtils.isEmpty(number)) {
                 setText("");
             }
-            
+
             setText(CountryPrefix.stripCountryPrefix(number,true));
         }
-        
+
         /** Listener for changes in the recipient field */
         private class RecipientDocumentChange implements Runnable {
             @Override
@@ -1194,19 +1262,21 @@ infoPanelLayout.setHorizontalGroup(
                 set.add(new Contact(contact != null ? contact.getName() : null,
                         getNumber(), gatewayComboBox.getSelectedGatewayName()));
                 envelope.setContacts(set);
-                
+
                 //update components
                 sendAction.updateStatus();
                 updateCountryInfoLabel();
                 updateNumberInfoLabel();
                 gatewayComboBox.setFilter(getNumber());
                 updateSuggestGatewayButton();
+                updateAddContactButton();
                 SMSPanel.this.revalidate();
             }
         }
     }
-    
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private JButton addContactButton;
     private InfoLabel countryInfoLabel;
     private InfoLabel credentialsInfoLabel;
     private JProgressBar fullProgressBar;
@@ -1225,5 +1295,5 @@ infoPanelLayout.setHorizontalGroup(
     private JButton suggestGatewayButton;
     private JLabel textLabel;
     // End of variables declaration//GEN-END:variables
-    
+
 }

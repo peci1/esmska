@@ -96,8 +96,9 @@ public class ImportManager {
                     String number = reader.get(1);
                     String gateway = reader.get(2);
                     String text = reader.get(3);
-
-                    SMS sms = new SMS(number, text, gateway, name);
+                    String id = reader.get(4);
+                    
+                    SMS sms = new SMS(number, text, gateway, name, id);
                     queue.add(sms);
                 } catch (Exception e) {
                     logger.severe("Invalid queue record: " + reader.getRawRecord());
@@ -135,11 +136,12 @@ public class ImportManager {
                     String text = reader.get(4);
                     String senderName = reader.get(5);
                     String senderNumber = reader.get(6);
+                    String id = reader.get(7);
 
                     Date date = df.parse(dateString);
 
                     History.Record record = new History.Record(number, text, gateway,
-                            name, senderNumber, senderName, date);
+                            name, senderNumber, senderName, date, id);
                     history.add(record);
                 } catch (Exception e) {
                     logger.severe("Invalid history record: " + reader.getRawRecord());

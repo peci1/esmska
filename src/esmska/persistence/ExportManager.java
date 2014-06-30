@@ -118,6 +118,7 @@ public class ExportManager {
                 sms.getNumber(),
                 sms.getGateway(),
                 sms.getText(),
+                sms.getId()
             });
         }
         writer.flush();
@@ -145,7 +146,8 @@ public class ExportManager {
                 record.getGateway(),
                 record.getText(),
                 record.getSenderName(),
-                record.getSenderNumber()
+                record.getSenderNumber(),
+                record.getSmsId()
             });
         }
         writer.flush();

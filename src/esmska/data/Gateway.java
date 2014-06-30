@@ -32,8 +32,6 @@ public class Gateway implements GatewayInfo, Comparable<Gateway> {
         /** The gateway is able to send a message as if it was coming from the
          * specified sender's cell number. */
         SENDER_NUMBER,
-        /** The gateway will append sender's name into the message if provided. */
-        SENDER_NAME,
         /** The gateway will send a delivery report upon request. This usually
          * means sending an SMS back to the sender as soon as the message reaches
          * the recipient. */
@@ -46,11 +44,14 @@ public class Gateway implements GatewayInfo, Comparable<Gateway> {
     public static final String UNKNOWN = L10N.l10nBundle.getString("Gateway.unknown");
 
     private static final Logger logger = Logger.getLogger(Gateway.class.getName());
+    // maximum number of characters the user can send at once
+    public static final int maxMessageLength = 1000;
+    // maximum multiplier of messages
+    private static final int maxMaxParts = 5;
     private URL script;
     private String name, version, maintainer, website, description, minProgramVersion;
     private String[] supportedPrefixes, preferredPrefixes, supportedLanguages, features;
-    private int smsLength,  maxParts,  maxChars,  signatureExtraLength,
-            delayBetweenMessages;
+    private int smsLength, maxParts, maxChars, delayBetweenMessages;
     private Icon icon;
     private boolean favorite, hidden;
     private GatewayConfig config = new GatewayConfig();
@@ -92,9 +93,7 @@ public class Gateway implements GatewayInfo, Comparable<Gateway> {
         supportedPrefixes = info.getSupportedPrefixes();
         preferredPrefixes = info.getPreferredPrefixes();
         smsLength = info.getSMSLength();
-        maxParts = info.getMaxParts();
         maxChars = info.getMaxChars();
-        signatureExtraLength = info.getSignatureExtraLength();
         delayBetweenMessages = info.getDelayBetweenMessages();
         supportedLanguages = info.getSupportedLanguages();
         features = info.getFeatures();
@@ -106,6 +105,10 @@ public class Gateway implements GatewayInfo, Comparable<Gateway> {
         if (icon.getIconWidth() <= 0) { //non-existing icon, zero-sized image
             icon = Icons.GATEWAY_DEFAULT;
         }
+        
+        // compute maxParts
+        maxParts = maxMessageLength / maxChars;
+        maxParts = Math.min(maxParts, maxMaxParts);
 
         logger.log(Level.FINER, "Created new gateway: {0}", toString());
     }
@@ -152,6 +155,21 @@ public class Gateway implements GatewayInfo, Comparable<Gateway> {
         }
         return false;
     }
+    
+    /** Number of allowed messages which user can send at once.
+     * This is a multiplier of the getMaxChars() number. Some gateways offer only
+     * very short crippled messages (eg. max 60 chars, rest with advertisement).
+     * To alleviate this problem, the user can write a longer text (a multiple
+     * of the allowed messages) and it will be split into separate messages
+     * automatically.
+     * 
+     * This number will get computed dynamically. It will be the highest 
+     * multiplier of getMaxChars() which doesn't exceed maxMessageLength chars 
+     * message length and simmultaneously a maximum multiplier maxMaxParts.
+     */
+    public int getMaxParts() {
+        return maxParts;
+    }
 
     public GatewayConfig getConfig() {
         return config;
@@ -161,33 +179,25 @@ public class Gateway implements GatewayInfo, Comparable<Gateway> {
         this.config = config;
     }
     
-    /** Get sender name signature suffix that should be appended to the message
+    /** Get sender name signature that should be prepended to the message
      * before it is sent.
-     * @return empty string if gateway appends the name signature automatically
-     *  or user does not want any signature to be appended; otherwise user name 
-     *  signature prepended with a newline character
+     * @return empty string if user does not want any signature to be added; 
+     *  otherwise user name signature
      */
-    public String getSenderNameSuffix() {
-        if (hasFeature(Feature.SENDER_NAME)) {
-            // gateway will append sender name signature automatically
-            return "";
-        }
-        // gateway does not support SENDER_NAME feature, we have to add it by hand
-        
+    public String getSenderName() {
         Signature signature = Signatures.getInstance().get(getConfig().getSignature());
         if (signature == null || StringUtils.isEmpty(signature.getUserName())) {
             // user doesn't want to add any name signature
             return "";
         }
         
-        // user wants to append his name signature
-        // prepend it with a single space to separate it from text content
-        String suffix = "\n" + signature.getUserName();
+        // user wants to add his name signature
+        String result = signature.getUserName();
         // remove accents if required
         if (Config.getInstance().isRemoveAccents()) {
-            suffix = MiscUtils.removeAccents(suffix);
+            result = MiscUtils.removeAccents(result);
         }
-        return suffix;
+        return result;
     }
 
     @Override
@@ -263,24 +273,8 @@ public class Gateway implements GatewayInfo, Comparable<Gateway> {
     }
 
     @Override
-    public int getMaxParts() {
-        return maxParts;
-    }
-
-    @Override
     public int getMaxChars() {
         return maxChars;
-    }
-
-    @Override
-    public int getSignatureExtraLength() {
-        if (hasFeature(Feature.SENDER_NAME)) {
-            // gateway will append its own string
-            return signatureExtraLength;
-        } else {
-            // we will append a newline character before the sender name
-            return 1;
-        }
     }
 
     @Override
