@@ -455,6 +455,8 @@ public class ConfigFrame extends javax.swing.JFrame {
         reducedHistoryCheckBox = new JCheckBox();
         reducedHistorySpinner = new JSpinner();
         jLabel18 = new JLabel();
+        useMasterPassword = new JCheckBox();
+        masterPasswordField = new JPasswordField();
         connectionPanel = new JPanel();
         useProxyCheckBox = new JCheckBox();
         httpProxyTextField = new JTextField();
@@ -535,16 +537,15 @@ public class ConfigFrame extends javax.swing.JFrame {
             .addContainerGap()
             .addGroup(generalPanelLayout.createParallelGroup(Alignment.LEADING)
                 .addComponent(countryPrefixPanel, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
-                .addGroup(generalPanelLayout.createSequentialGroup()
-                    .addGap(22, 22, 22)
-                    .addComponent(unstableUpdatesCheckBox))
-                .addGroup(generalPanelLayout.createSequentialGroup()
-                    .addGap(22, 22, 22)
-                    .addComponent(logLocationLabel, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE))
                 .addComponent(removeAccentsCheckBox)
                 .addComponent(announceProgramUpdatesCheckBox)
-                .addComponent(debugCheckBox))
-            .addContainerGap(363, Short.MAX_VALUE))
+                .addComponent(debugCheckBox)
+                .addGroup(generalPanelLayout.createSequentialGroup()
+                    .addGap(22, 22, 22)
+                    .addGroup(generalPanelLayout.createParallelGroup(Alignment.LEADING)
+                        .addComponent(unstableUpdatesCheckBox)
+                        .addComponent(logLocationLabel, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE))))
+            .addContainerGap(439, Short.MAX_VALUE))
     );
     generalPanelLayout.setVerticalGroup(
         generalPanelLayout.createParallelGroup(Alignment.LEADING)
@@ -561,7 +562,7 @@ public class ConfigFrame extends javax.swing.JFrame {
             .addComponent(debugCheckBox)
             .addPreferredGap(ComponentPlacement.RELATED)
             .addComponent(logLocationLabel, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
-            .addContainerGap(235, Short.MAX_VALUE))
+            .addContainerGap(244, Short.MAX_VALUE))
     );
 
     tabbedPane.addTab(l10n.getString("ConfigFrame.generalPanel.TabConstraints.tabTitle"), new ImageIcon(getClass().getResource("/esmska/resources/config-16.png")), generalPanel); // NOI18N
@@ -658,7 +659,7 @@ public class ConfigFrame extends javax.swing.JFrame {
                 .addComponent(notificationAreaCheckBox)
                 .addComponent(toolbarVisibleCheckBox)
                 .addComponent(advancedControlsCheckBox))
-            .addContainerGap(455, Short.MAX_VALUE))
+            .addContainerGap(502, Short.MAX_VALUE))
     );
 
     appearancePanelLayout.linkSize(SwingConstants.HORIZONTAL, new Component[] {lafComboBox, themeComboBox});
@@ -688,7 +689,7 @@ public class ConfigFrame extends javax.swing.JFrame {
             .addComponent(tipsCheckBox)
             .addPreferredGap(ComponentPlacement.RELATED)
             .addComponent(advancedControlsCheckBox)
-            .addContainerGap(179, Short.MAX_VALUE))
+            .addContainerGap(188, Short.MAX_VALUE))
     );
 
     appearancePanelLayout.linkSize(SwingConstants.VERTICAL, new Component[] {lafComboBox, themeComboBox});
@@ -696,7 +697,7 @@ public class ConfigFrame extends javax.swing.JFrame {
     tabbedPane.addTab(l10n.getString("ConfigFrame.appearancePanel.TabConstraints.tabTitle"), new ImageIcon(getClass().getResource("/esmska/resources/appearance-16.png")), appearancePanel); // NOI18N
 
     clearKeyringButton.setIcon(new ImageIcon(getClass().getResource("/esmska/resources/clear-22.png"))); // NOI18N
-    Mnemonics.setLocalizedText(clearKeyringButton, l10n.getString("ConfigFrame.clearKeyringButton.text"));
+        Mnemonics.setLocalizedText(clearKeyringButton, l10n.getString("ConfigFrame.clearKeyringButton.text")); // NOI18N
     clearKeyringButton.setToolTipText(l10n.getString("ConfigFrame.clearKeyringButton.toolTipText")); // NOI18N
     clearKeyringButton.addActionListener(new ActionListener() {
         public void actionPerformed(ActionEvent evt) {
@@ -877,7 +878,7 @@ public class ConfigFrame extends javax.swing.JFrame {
             .addContainerGap()
             .addGroup(gatewayPanelLayout.createParallelGroup(Alignment.LEADING)
                 .addGroup(Alignment.TRAILING, gatewayPanelLayout.createSequentialGroup()
-                    .addComponent(jScrollPane1, GroupLayout.DEFAULT_SIZE, 473, Short.MAX_VALUE)
+                    .addComponent(jScrollPane1, GroupLayout.DEFAULT_SIZE, 480, Short.MAX_VALUE)
                     .addPreferredGap(ComponentPlacement.RELATED)
                     .addGroup(gatewayPanelLayout.createParallelGroup(Alignment.LEADING)
                         .addComponent(clearKeyringButton)
@@ -892,7 +893,7 @@ public class ConfigFrame extends javax.swing.JFrame {
             .addGroup(gatewayPanelLayout.createParallelGroup(Alignment.LEADING)
                 .addGroup(gatewayPanelLayout.createSequentialGroup()
                     .addComponent(gwDetailsPanel, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
-                    .addPreferredGap(ComponentPlacement.RELATED, 42, Short.MAX_VALUE)
+                    .addPreferredGap(ComponentPlacement.RELATED, 93, Short.MAX_VALUE)
                     .addComponent(clearKeyringButton))
                 .addComponent(jScrollPane1, GroupLayout.DEFAULT_SIZE, 335, Short.MAX_VALUE))
             .addPreferredGap(ComponentPlacement.RELATED)
@@ -902,7 +903,7 @@ public class ConfigFrame extends javax.swing.JFrame {
 
     tabbedPane.addTab(l10n.getString("ConfigFrame.gatewayPanel.TabConstraints.tabTitle"), new ImageIcon(getClass().getResource("/esmska/resources/gateway-16.png")), gatewayPanel); // NOI18N
 
-        Mnemonics.setLocalizedText(reducedHistoryCheckBox, l10n.getString("ConfigFrame.reducedHistoryCheckBox.text"));
+        Mnemonics.setLocalizedText(reducedHistoryCheckBox, l10n.getString("ConfigFrame.reducedHistoryCheckBox.text")); // NOI18N
     reducedHistoryCheckBox.setToolTipText(l10n.getString("ConfigFrame.reducedHistoryCheckBox.toolTipText")); // NOI18N
 
     binding = Bindings.createAutoBinding(UpdateStrategy.READ_WRITE, config, ELProperty.create("${reducedHistory}"), reducedHistoryCheckBox, BeanProperty.create("selected"));
@@ -917,10 +918,28 @@ public class ConfigFrame extends javax.swing.JFrame {
     binding = Bindings.createAutoBinding(UpdateStrategy.READ, reducedHistoryCheckBox, ELProperty.create("${selected}"), reducedHistorySpinner, BeanProperty.create("enabled"));
     bindingGroup.addBinding(binding);
 
-        ((SpinnerNumberModel) reducedHistorySpinner.getModel()).setMinimum(new Integer(0)); // NOI18N
-        Mnemonics.setLocalizedText(jLabel18, "<<days.>>");
+    ((SpinnerNumberModel)reducedHistorySpinner.getModel()).setMinimum(new Integer(0));
+
+        Mnemonics.setLocalizedText(jLabel18, "<<days.>>"); // NOI18N
     jLabel18.setToolTipText(reducedHistoryCheckBox.getToolTipText());
     jLabel18.setText(l10n.getString("ConfigFrame.reducedHistoryCheckBox.text").replaceFirst("^.*\\{0\\}", "").trim());
+
+        Mnemonics.setLocalizedText(useMasterPassword, l10n.getString("ConfigFrame.useMasterPassword.text")); // NOI18N
+        useMasterPassword.setToolTipText(l10n.getString("ConfigFrame.useMasterPassword.toolTipText")); // NOI18N
+    useMasterPassword.addActionListener(new ActionListener() {
+        public void actionPerformed(ActionEvent evt) {
+            masterPasswordActionPerformed(evt);
+        }
+    });
+
+    masterPasswordField.setColumns(15);
+        masterPasswordField.setText(l10n.getString("ConfigFrame.masterPasswordField.text")); // NOI18N
+        masterPasswordField.setToolTipText(l10n.getString("ConfigFrame.masterPasswordField.toolTipText")); // NOI18N
+    masterPasswordField.addActionListener(new ActionListener() {
+        public void actionPerformed(ActionEvent evt) {
+            masterPasswordActionPerformed(evt);
+        }
+    });
 
         GroupLayout privacyPanelLayout = new GroupLayout(privacyPanel);
     privacyPanel.setLayout(privacyPanelLayout);
@@ -928,12 +947,18 @@ public class ConfigFrame extends javax.swing.JFrame {
         privacyPanelLayout.createParallelGroup(Alignment.LEADING)
         .addGroup(privacyPanelLayout.createSequentialGroup()
             .addContainerGap()
-            .addComponent(reducedHistoryCheckBox)
-            .addPreferredGap(ComponentPlacement.RELATED)
-            .addComponent(reducedHistorySpinner, GroupLayout.PREFERRED_SIZE, 65, GroupLayout.PREFERRED_SIZE)
-            .addPreferredGap(ComponentPlacement.RELATED)
-            .addComponent(jLabel18)
-            .addContainerGap(196, Short.MAX_VALUE))
+            .addGroup(privacyPanelLayout.createParallelGroup(Alignment.LEADING)
+                .addGroup(privacyPanelLayout.createSequentialGroup()
+                    .addComponent(reducedHistoryCheckBox)
+                    .addPreferredGap(ComponentPlacement.RELATED)
+                    .addComponent(reducedHistorySpinner, GroupLayout.PREFERRED_SIZE, 65, GroupLayout.PREFERRED_SIZE)
+                    .addPreferredGap(ComponentPlacement.RELATED)
+                    .addComponent(jLabel18))
+                .addGroup(privacyPanelLayout.createSequentialGroup()
+                    .addComponent(useMasterPassword)
+                    .addPreferredGap(ComponentPlacement.RELATED)
+                    .addComponent(masterPasswordField, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)))
+            .addContainerGap(292, Short.MAX_VALUE))
     );
     privacyPanelLayout.setVerticalGroup(
         privacyPanelLayout.createParallelGroup(Alignment.LEADING)
@@ -943,12 +968,16 @@ public class ConfigFrame extends javax.swing.JFrame {
                 .addComponent(reducedHistoryCheckBox)
                 .addComponent(reducedHistorySpinner, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
                 .addComponent(jLabel18))
+            .addPreferredGap(ComponentPlacement.UNRELATED)
+            .addGroup(privacyPanelLayout.createParallelGroup(Alignment.BASELINE)
+                .addComponent(useMasterPassword)
+                .addComponent(masterPasswordField, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE))
             .addContainerGap())
     );
 
     tabbedPane.addTab(l10n.getString("ConfigFrame.privacyPanel.TabConstraints.tabTitle"), new ImageIcon(getClass().getResource("/esmska/resources/lock-16.png")), privacyPanel); // NOI18N
 
-        Mnemonics.setLocalizedText(useProxyCheckBox, l10n.getString("ConfigFrame.useProxyCheckBox.text"));
+        Mnemonics.setLocalizedText(useProxyCheckBox, l10n.getString("ConfigFrame.useProxyCheckBox.text")); // NOI18N
     useProxyCheckBox.setToolTipText(l10n.getString("ConfigFrame.useProxyCheckBox.toolTipText")); // NOI18N
 
     binding = Bindings.createAutoBinding(UpdateStrategy.READ_WRITE, config, ELProperty.create("${useProxy}"), useProxyCheckBox, BeanProperty.create("selected"));
@@ -1059,7 +1088,7 @@ public class ConfigFrame extends javax.swing.JFrame {
                         .addGroup(connectionPanelLayout.createSequentialGroup()
                             .addGap(6, 6, 6)
                             .addComponent(sameProxyCheckBox))))
-                .addComponent(jLabel17, GroupLayout.DEFAULT_SIZE, 712, Short.MAX_VALUE))
+                .addComponent(jLabel17, GroupLayout.DEFAULT_SIZE, 699, Short.MAX_VALUE))
             .addContainerGap())
     );
 
@@ -1086,7 +1115,7 @@ public class ConfigFrame extends javax.swing.JFrame {
             .addGroup(connectionPanelLayout.createParallelGroup(Alignment.BASELINE)
                 .addComponent(jLabel16)
                 .addComponent(socksProxyTextField, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE))
-            .addPreferredGap(ComponentPlacement.RELATED, 217, Short.MAX_VALUE)
+            .addPreferredGap(ComponentPlacement.RELATED, 235, Short.MAX_VALUE)
             .addComponent(jLabel17, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
             .addContainerGap())
     );
@@ -1096,14 +1125,14 @@ public class ConfigFrame extends javax.swing.JFrame {
     tabbedPane.addTab(l10n.getString("ConfigFrame.connectionPanel.TabConstraints.tabTitle"), new ImageIcon(getClass().getResource("/esmska/resources/connection-16.png")), connectionPanel); // NOI18N
 
     closeButton.setIcon(new ImageIcon(getClass().getResource("/esmska/resources/close-22.png"))); // NOI18N
-
-        Mnemonics.setLocalizedText(closeButton, l10n.getString("Close_"));
+        Mnemonics.setLocalizedText(closeButton, l10n.getString("Close_")); // NOI18N
     closeButton.addActionListener(new ActionListener() {
         public void actionPerformed(ActionEvent evt) {
             closeButtonActionPerformed(evt);
         }
     });
-        Mnemonics.setLocalizedText(advancedCheckBox, l10n.getString("ConfigFrame.advancedCheckBox.text"));
+
+        Mnemonics.setLocalizedText(advancedCheckBox, l10n.getString("ConfigFrame.advancedCheckBox.text")); // NOI18N
     advancedCheckBox.setToolTipText(l10n.getString("ConfigFrame.advancedCheckBox.toolTipText")); // NOI18N
 
     binding = Bindings.createAutoBinding(UpdateStrategy.READ_WRITE, config, ELProperty.create("${showAdvancedSettings}"), advancedCheckBox, BeanProperty.create("selected"));
@@ -1383,7 +1412,15 @@ private void demandDeliveryReportCheckBoxActionPerformed(ActionEvent evt) {//GEN
     Gateway gateway = gwTableModel.getGateway(row);
     gateway.getConfig().setReceipt(demandDeliveryReportCheckBox.isSelected());
 }//GEN-LAST:event_demandDeliveryReportCheckBoxActionPerformed
-    
+
+    private void masterPasswordActionPerformed(ActionEvent evt) {//GEN-FIRST:event_masterPasswordActionPerformed
+        if (!useMasterPassword.isSelected() || masterPasswordField.getPassword().length == 0) {
+            keyring.setMasterPasswordString(null);
+        } else {
+            keyring.setMasterPasswordString(new String(masterPasswordField.getPassword()));
+        }
+    }//GEN-LAST:event_masterPasswordActionPerformed
+
     private class LaFComboRenderer extends DefaultListCellRenderer {
         private final ListCellRenderer lafRenderer = new JList().getCellRenderer();
         private final String LAF_SYSTEM = l10n.getString("ConfigFrame.system_look");
@@ -1706,6 +1743,7 @@ private void demandDeliveryReportCheckBoxActionPerformed(ActionEvent evt) {//GEN
     private JLabel logLocationLabel;
     private JTextField loginField;
     private JLabel lookLabel;
+    private JPasswordField masterPasswordField;
     private JCheckBox notificationAreaCheckBox;
     private JPasswordField passwordField;
     private JPanel privacyPanel;
@@ -1730,6 +1768,7 @@ private void demandDeliveryReportCheckBoxActionPerformed(ActionEvent evt) {//GEN
     private JCheckBox tipsCheckBox;
     private JCheckBox toolbarVisibleCheckBox;
     private JCheckBox unstableUpdatesCheckBox;
+    private JCheckBox useMasterPassword;
     private JCheckBox useProxyCheckBox;
     private JCheckBox windowCenteredCheckBox;
     private BindingGroup bindingGroup;

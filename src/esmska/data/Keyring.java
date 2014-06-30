@@ -17,41 +17,49 @@ import org.apache.commons.lang.ObjectUtils;
 import esmska.data.event.ActionEventSupport;
 import esmska.gui.MasterPasswordDialogHelper;
 
-/** Storage for logins and passwords to gateways.
+/**
+ * Storage for logins and passwords to gateways.
  * Also offers password encryption and decryption.
+ * 
  * @author ripper
  */
-public class Keyring {
+public class Keyring
+{
 
     /** The configuration of the program. */
-    private static final Config                      config            = Config.getInstance();
+    private static final Config                               config                         = Config.getInstance();
 
     /** shared instance */
-    private static final Keyring instance = new Keyring();
+    private static final Keyring                              instance                       = new Keyring();
     /** new key added or existing changed */
-    public static final int ACTION_ADD_KEY = 0;
+    public static final int                                   ACTION_ADD_KEY                 = 0;
     /** existing key removed */
-    public static final int ACTION_REMOVE_KEY = 1;
+    public static final int                                   ACTION_REMOVE_KEY              = 1;
     /** all keys removed */
-    public static final int ACTION_CLEAR_KEYS = 2;
+    public static final int                                   ACTION_CLEAR_KEYS              = 2;
     /** master password changed */
     public static final int                                   ACTION_MASTER_PASSWORD_CHANGED = 3;
-    private static final Logger logger = Logger.getLogger(Keyring.class.getName());
+    private static final Logger                               logger                         = Logger.getLogger(Keyring.class
+                                                                                                     .getName());
     /** map of [gateway, [login, password]] */
-    private final Map<String, Tuple<String, EncryptedString>> keyring           = Collections
-                                                                                        .synchronizedMap(new HashMap<String, Tuple<String, EncryptedString>>());
+    private final Map<String, Tuple<String, EncryptedString>> keyring                        = Collections
+                                                                                                     .synchronizedMap(new HashMap<String, Tuple<String, EncryptedString>>());
     /** manager of the master password */
-    private static final MasterPasswordManager       masterPasswordManager;
+    private static final MasterPasswordManager                masterPasswordManager;
     // <editor-fold defaultstate="collapsed" desc="ActionEvent support">
-    private ActionEventSupport actionSupport = new ActionEventSupport(this);
+    private ActionEventSupport                                actionSupport                  = new ActionEventSupport(
+                                                                                                     this);
 
-    public void addActionListener(ActionListener actionListener) {
+    public void addActionListener(ActionListener actionListener)
+    {
         actionSupport.addActionListener(actionListener);
     }
 
-    public void removeActionListener(ActionListener actionListener) {
+    public void removeActionListener(ActionListener actionListener)
+    {
         actionSupport.removeActionListener(actionListener);
     }
+
     // </editor-fold>
 
     static {
@@ -59,15 +67,19 @@ public class Keyring {
     }
 
     /** Private constructor */
-    private Keyring() {
+    private Keyring()
+    {
     }
 
     /** Get shared instance */
-    public static Keyring getInstance() {
+    public static Keyring getInstance()
+    {
         return instance;
     }
 
-    /** Get key for chosen gateway.
+    /**
+     * Get key for chosen gateway.
+     * 
      * @param gatewayName Name of the gateway.
      * @return tuple in the form [login, password] if key for this gateway
      *         exists. Null otherwise.
@@ -77,8 +89,10 @@ public class Keyring {
         return keyring.get(gatewayName);
     }
 
-    /** Put key for chosen gateway. If a key for this gateway already exists,
+    /**
+     * Put key for chosen gateway. If a key for this gateway already exists,
      * overwrite previous one.
+     * 
      * @param gatewayName Name of the gateway.
      * @param key tuple in the form [login, password].
      * @throws IllegalArgumentException If gatewayName or key is null.
@@ -239,14 +253,15 @@ public class Keyring {
      */
     public void setMasterPasswordString(final String password)
     {
-        masterPasswordManager.setMasterPasswordString(password);
+        if (masterPasswordManager.setMasterPasswordString(password)) {
 
-        // update the ciphertexts for all saved passwords
-        for (Entry<String, Tuple<String, EncryptedString>> entry : keyring.entrySet()) {
-            entry.getValue().get2().updateCipherText();
+            // update the ciphertexts for all saved passwords
+            for (Entry<String, Tuple<String, EncryptedString>> entry : keyring.entrySet()) {
+                entry.getValue().get2().updateCipherText();
+            }
+
+            actionSupport.fireActionPerformed(ACTION_MASTER_PASSWORD_CHANGED, null);
         }
-
-        actionSupport.fireActionPerformed(ACTION_MASTER_PASSWORD_CHANGED, null);
     }
 
     /**
@@ -347,18 +362,21 @@ public class Keyring {
          * @param masterPasswordString The masterPasswordString to set. Pass <code>null</code> to use the default
          *            password.
          * 
+         * @retrurn Return true if the given password is different than the old password.
+         * 
          * @throws IllegalStateException If the master password hasn't been entered yet.
          */
-        public void setMasterPasswordString(String masterPasswordString) throws IllegalStateException
+        public synchronized boolean setMasterPasswordString(String masterPasswordString) throws IllegalStateException
         {
-            synchronized (masterPassword) {
-                synchronized (masterPasswordHash) {
-                    if (masterPassword == null && masterPasswordHash != null)
-                        throw new IllegalStateException("Cannot change master password before it was entered.");
+            if (masterPassword == null && masterPasswordHash != null)
+                throw new IllegalStateException("Cannot change master password before it was entered.");
 
-                    setMasterPasswordStringImpl(masterPasswordString);
-                    setMasterPasswordHashFromString(masterPasswordString);
-                }
+            // do not run the setters when both the old and new passwords are null
+            if (masterPasswordHash != null || masterPasswordString != null) {
+                setMasterPasswordStringImpl(masterPasswordString);
+                return setMasterPasswordHashFromString(masterPasswordString);
+            } else {
+                return false;
             }
         }
 
@@ -366,9 +384,13 @@ public class Keyring {
          * Compute and save the password hash from the given string.
          * 
          * @param masterPasswordString The password to compute hash for.
+         * 
+         * @return Return true if the given password has a different hash than the current one.
          */
-        private synchronized void setMasterPasswordHashFromString(String masterPasswordString)
+        private synchronized boolean setMasterPasswordHashFromString(String masterPasswordString)
         {
+            final byte[] oldHash = masterPasswordHash;
+
             if (masterPasswordString == null) {
                 masterPasswordHash = null;
             } else {
@@ -376,6 +398,15 @@ public class Keyring {
             }
 
             config.setMasterPasswordHash(masterPasswordHash);
+
+            if (oldHash != null) {
+                if (masterPasswordHash == null)
+                    return true;
+                else
+                    return !Arrays.equals(oldHash, masterPasswordHash);
+            } else {
+                return masterPasswordHash != null;
+            }
         }
 
         /**
