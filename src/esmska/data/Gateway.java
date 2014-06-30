@@ -45,9 +45,9 @@ public class Gateway implements GatewayInfo, Comparable<Gateway> {
 
     private static final Logger logger = Logger.getLogger(Gateway.class.getName());
     // maximum number of characters the user can send at once
-    public static final int maxMessageLength = 1000;
+    public static final int maxMessageLength = 100000;
     // maximum multiplier of messages
-    private static final int maxMaxParts = 5;
+    private static final int maxMaxParts = 500;
     private URL script;
     private String name, version, maintainer, website, description, minProgramVersion;
     private String[] supportedPrefixes, preferredPrefixes, supportedLanguages, features;
