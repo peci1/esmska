@@ -1,3 +1,21 @@
+no-sms-limit fork info
+======================
+This fork contains (in branch no-sms-limit) a slightly changed esmska code,
+where there is no limit on the length of a single text message. The message
+is subdivided to the appropriate number of real messages, and they are then
+sent via the gateways. In the official esmska release, the limit is either
+5 messages or 1000 characters.
+
+Download the latest patched esmska from https://app.box.com/s/5prgikg8f3199ohhjqwq
+and just unzip it and overwrite the files in your esmska installation folder. 
+The patched distributions are usually published in 1-2 weeks after the official
+version is released.
+
+If you click an update link from within esmska and install the new version from
+the official source, you will lose the ability to send long messages. If this
+happense to you, just wait until the new patched version is released and 
+overwrite your installation with the patched version again. 
+
 README for Esmska
 =================
 
