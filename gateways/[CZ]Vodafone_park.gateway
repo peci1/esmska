@@ -4,7 +4,7 @@ function getName() {
 }
 
 function getVersion() {
-    return "2014-09-07"
+    return "2014-11-20"
 }
 
 function getMaintainer() {
@@ -120,7 +120,7 @@ function send() {
         // there are two versions of proof:field secret, see
         // https://code.google.com/p/esmska/issues/detail?id=467
         // if the previous one wasn't found, let's try the second one
-        re = /<script>eval\((function\(p,a,c,k,e,d\).*?)\);<\/script>/
+        re = /<script[^>]*>eval\((function\(p,a,c,k,e,d\).*?)\);<\/script>/
         match = re.exec(content)
         script = ('b = ' + match[1]).toString()
         eval(script)
@@ -227,12 +227,28 @@ function stripCSSselectors(code, page_source, cssDefs) {
     while ((match = re.exec(code)) != null) {
         // find out the value
         name = match[1]
-        re2 = new RegExp(name + "\\{color:(#\\w{6});")
-        match2 = re2.exec(page_source)
-        if (!match2) {
-            match2 = re2.exec(cssDefs)
+
+        // match for a CSS definition of the color
+        regexString = name + "\\{color:\\s*(#\\w{6})"
+
+        // remember the last definition
+        var lastMatch
+
+        // match for the last occurence in page body
+        re2 = new RegExp(regexString, "g")
+        var match2
+        while ( (match2 = re2.exec(page_source)) !== null) {
+            lastMatch = match2
         }
-        color = match2[1]
+
+        // match for the last occurence in included CSS file
+        re3 = new RegExp(regexString, "g")
+        var match3
+        while ( (match3 = re3.exec(cssDefs)) !== null) {
+            lastMatch = match3
+        }
+
+        color = lastMatch[1]
         color = hex2rgb(color)
         // replace the selector
         code = code.replace("$(\"" + name + "\").css(\"color\")", "\"" + color + "\"")

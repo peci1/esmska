@@ -1,6 +1,6 @@
 
 function getName() {
-    return "[CZ]t-zones"
+    return "[CZ]t-zones (free)"
 }
 
 function getVersion() {
@@ -20,7 +20,7 @@ function getWebsite() {
 }
 
 function getDescription() {
-    return "Oficiální brána T-mobile určená pro registrované zákazníky. Zdarma odesílá zprávy do sítě T-mobile, zprávy do ostatních sítí jsou zpoplatněny dle vašeho tarifu. Nevyžaduje opsání bezpečnostního kódu."
+    return "Oficiální brána T-mobile určená pro registrované zákazníky. Zdarma odesílá zprávy do sítě T-mobile, zprávy do ostatních sítí neodesílá. Nevyžaduje opsání bezpečnostního kódu."
 }
 
 function getSupportedPrefixes() {
@@ -119,7 +119,7 @@ function send() {
     re = /<input type="hidden" name="counter" value="(.*)" \/>/
     match = re.exec(content);
     counter = match[1]
-    
+
     // captcha may be present
     re =  /<span class="captcha">/
     match = re.exec(content)
@@ -147,15 +147,10 @@ function send() {
     re = /Tito adresáti jsou mimo síť T-Mobile|Recipients out of T-Mobile CZ network/
     paid = re.exec(content)
     if (paid) {
-        // find counter
-        re = /<input type="hidden" name="counter" value="(.*)" \/>/
-        match = re.exec(content);
-        counter = match[1]
-        // send sms for real
-        postData = ["counter", counter,
-                    "tmcz", "1",
-                    "rcpt1", NUMBER]
-        content = EXEC.postURL("https://sms.t-mobile.cz/closed.jsp", [], postData)
+        // číslo není z T-mobile
+        msg = paid[0] + ". Pokud chcete zprávu odeslat, změňte prosím bránu."
+        EXEC.setProblem("GATEWAY_MESSAGE", msg)
+        return false
     }
     
     // check if message was successfully sent
@@ -165,11 +160,6 @@ function send() {
     match_en = re_en.exec(content)
     if (match_cs || match_en) {
         // all ok
-        if (paid) {
-            // display extra message if message was paid
-            msg = match_cs ? "SMS byla odeslána jako placená" : "You were charged for the message according to your tariff."
-            EXEC.setSupplementalMessage(msg)
-        }
         logout()
         return true
     }
